@@ -14,3 +14,4 @@ export function useRoute() {
 }
 
 export const href = (path: string) => `#${path}`;
+export const go = (path: string) => { window.location.hash = path; };

@@ -30,8 +30,9 @@ export const usingRealPhotos = photoSources.length > 0;
 export const sampleImage: ImageSource = photoSources[0] ?? sceneSources[0];
 
 /** Distinct images for one slideshow. Repeats only if the pool is smaller than the slideshow. */
-export function imagePool(rand: Rand, count: number): ImageSource[] {
-  const pool = usingRealPhotos ? photoSources : sceneSources;
+/** `custom` is a style's own photos. They win over the folder photos and the placeholder scenes. */
+export function imagePool(rand: Rand, count: number, custom: ImageSource[] = []): ImageSource[] {
+  const pool = custom.length ? custom : usingRealPhotos ? photoSources : sceneSources;
   const shuffled = shuffle(rand, pool);
   return Array.from({ length: count }, (_, i) => shuffled[i % shuffled.length]);
 }

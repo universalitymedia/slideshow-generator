@@ -1,10 +1,12 @@
 import { zipSync } from "fflate";
 import { ChevronDown, Copy, Download, ExternalLink, Images, Music2, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { api } from "../api";
 import { CaptionCard } from "../components/CaptionCard";
 import { StylePicker } from "../components/StylePicker";
 import { SlideCard } from "../components/SlideCard";
-import type { PersonaId, TopicId } from "../slideshow/content";
+import type { Caption, PersonaId, TopicId } from "../slideshow/content";
+import type { SlideStyle } from "../slideshow/styles";
 import {
   generate,
   personaLabel,
@@ -14,11 +16,9 @@ import {
   topicLabel,
   topicsFor,
   type Options,
-  type Slideshow,
 } from "../slideshow/generate";
 import { renderBlob, usingRealPhotos } from "../slideshow/images";
 import { newSeed } from "../slideshow/rng";
-import { DEFAULT_STYLE, type SlideStyle } from "../slideshow/styles";
 import { TOOLS } from "../tools";
 
 const tool = TOOLS[0];
@@ -34,17 +34,30 @@ function save(blob: Blob, filename: string) {
 const seedId = (seed: number) => seed.toString(16).padStart(8, "0");
 
 export function SlideshowGenerator() {
+  const [styles, setStyles] = useState<SlideStyle[] | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [styleId, setStyleId] = useState("");
   const [opts, setOpts] = useState<Options>({ persona: "any", topic: "any", slides: "random" });
-  const [show, setShow] = useState<Slideshow | null>(null);
-  const [style, setStyle] = useState<SlideStyle>(DEFAULT_STYLE);
+  // What the last click on Generate used. Changing the style afterwards re-renders the same slideshow in the new style.
+  const [params, setParams] = useState<{ seed: number; opts: Options } | null>(null);
+  const [captionPick, setCaptionPick] = useState<{ key: string; caption: Caption } | null>(null);
   const [busy, setBusy] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
+
+  useEffect(() => {
+    api.styles().then((r) => { setStyles(r.styles); setStyleId(r.styles[0]?.id ?? ""); }).catch((e) => setLoadError(e.message));
+  }, []);
+
+  const style: SlideStyle | undefined = styles?.find((s) => s.id === styleId) ?? styles?.[0];
+  const generated = useMemo(() => (params && style ? generate(params.seed, params.opts, style) : null), [params, style]);
+  const caption = generated && captionPick?.key === `${generated.seed}-${generated.topic}` ? captionPick.caption : generated?.caption;
+  const show = generated && caption ? { ...generated, caption } : null;
 
   // Only offer combinations that have at least one hook.
   const topics = useMemo(() => topicsFor(opts.persona), [opts.persona]);
   const personas = useMemo(() => personasFor(opts.topic), [opts.topic]);
 
-  const run = () => setShow(generate(newSeed(), opts));
+  const run = () => { setCaptionPick(null); setParams({ seed: newSeed(), opts: { ...opts } }); };
   const allText = () => show!.slides.map((s) => s.text).join("\n\n");
 
   async function copyAll() {
@@ -54,12 +67,12 @@ export function SlideshowGenerator() {
   }
 
   async function downloadAll() {
-    if (!show) return;
+    if (!show || !style) return;
     setBusy(true);
     try {
       const files: Record<string, Uint8Array> = {};
       for (const [i, s] of show.slides.entries()) {
-        files[`slide-${String(i + 1).padStart(2, "0")}.png`] = new Uint8Array(await (await renderBlob(s.image, style.filter)).arrayBuffer());
+        files[`slide-${String(i + 1).padStart(2, "0")}.png`] = new Uint8Array(await (await renderBlob(s.image, style!.filter)).arrayBuffer());
       }
       files["captions.txt"] = new TextEncoder().encode(allText());
       save(new Blob([zipSync(files, { level: 0 }) as BlobPart], { type: "application/zip" }), `slideshow-${seedId(show.seed)}.zip`);
@@ -84,15 +97,16 @@ export function SlideshowGenerator() {
             <h2>Style</h2>
             <p className="muted small">Pick a look. Each preview shows exactly how your slides will be styled.</p>
           </div>
-          <button className="btn primary" onClick={run}>
+          <button className="btn primary" onClick={run} disabled={!style}>
             <Sparkles size={16} /> {show ? "Regenerate" : "Generate slideshow"}
           </button>
         </div>
 
-        <StylePicker value={style} onChange={setStyle} />
+        {styles && style ? <StylePicker styles={styles} value={style.id} onChange={setStyleId} /> : <p className="muted">{loadError || "Loading styles…"}</p>}
 
         <details className="more">
           <summary><ChevronDown size={16} /> Story options</summary>
+          <p className="muted small more-hint">Told by and Topic shape the built-in content. A style with its own hooks uses those instead of Told by.</p>
           <div className="controls">
             <label className="field">
               <span>Told by</span>
@@ -144,7 +158,7 @@ export function SlideshowGenerator() {
           </section>
 
           <section className="result-head">
-            <span className="chip solid">{personaLabel(show.persona)}</span>
+            {show.persona && <span className="chip solid">{personaLabel(show.persona)}</span>}
             <span className="chip">{topicLabel(show.topic)}</span>
             <span className="muted small">
               {show.slides.length} slides · #{seedId(show.seed)} ·{" "}
@@ -165,17 +179,17 @@ export function SlideshowGenerator() {
               <SlideCard
                 key={`${show.seed}-${i}`}
                 slide={s}
-                style={style}
+                style={style!}
                 index={i}
                 onCopy={() => navigator.clipboard.writeText(s.text)}
-                onDownload={async () => save(await renderBlob(s.image, style.filter), `slide-${String(i + 1).padStart(2, "0")}.png`)}
+                onDownload={async () => save(await renderBlob(s.image, style!.filter), `slide-${String(i + 1).padStart(2, "0")}.png`)}
               />
             ))}
           </section>
 
           <CaptionCard
             caption={show.caption}
-            onShuffle={() => setShow({ ...show, caption: pickCaption(Math.random, show.topic, show.caption) })}
+            onShuffle={() => setCaptionPick({ key: `${show.seed}-${show.topic}`, caption: pickCaption(Math.random, show.topic, show.caption) })}
           />
         </>
       )}

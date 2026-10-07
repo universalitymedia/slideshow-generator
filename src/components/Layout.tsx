@@ -1,14 +1,17 @@
-import { UserButton } from "@clerk/react";
-import { ChevronRight, LayoutDashboard, PanelLeft } from "lucide-react";
-import logo from "../assets/brand/logo.png";
+import { ChevronRight, LayoutDashboard, LogOut, PanelLeft, ShieldCheck } from "lucide-react";
 import { useState, type ReactNode } from "react";
+import logo from "../assets/brand/logo.png";
+import { useAuth } from "../auth";
 import { href } from "../router";
 import { PLATFORMS, TOOLS } from "../tools";
 
 export function Layout({ route, children }: { route: string; children: ReactNode }) {
+  const { user, signOut } = useAuth();
   const [open, setOpen] = useState(true);
   const tool = TOOLS.find((t) => t.path === route);
   const platform = tool && PLATFORMS.find((p) => p.label === tool.platform);
+  const inAdmin = route.startsWith("/admin");
+  const editing = route.startsWith("/admin/styles/");
 
   return (
     <div className={`shell ${open ? "" : "collapsed"}`}>
@@ -41,6 +44,15 @@ export function Layout({ route, children }: { route: string; children: ReactNode
               </div>
             </div>
           ))}
+
+          {user?.isAdmin && (
+            <>
+              <p className="nav-label">Admin</p>
+              <a className={`nav-item ${inAdmin ? "active" : ""}`} href={href("/admin")}>
+                <ShieldCheck size={18} /> <span>Styles</span>
+              </a>
+            </>
+          )}
         </nav>
       </aside>
 
@@ -59,11 +71,34 @@ export function Layout({ route, children }: { route: string; children: ReactNode
                 <ChevronRight size={14} />
                 <li aria-current="page">{tool.title}</li>
               </>
+            ) : inAdmin ? (
+              <>
+                <li><a href={href("/")}>Dashboard</a></li>
+                <ChevronRight size={14} />
+                {editing ? (
+                  <>
+                    <li><a href={href("/admin")}>Admin</a></li>
+                    <ChevronRight size={14} />
+                    <li aria-current="page">Edit style</li>
+                  </>
+                ) : (
+                  <li aria-current="page">Admin</li>
+                )}
+              </>
             ) : (
               <li aria-current="page">Dashboard</li>
             )}
           </ol>
-          <div className="push"><UserButton /></div>
+
+          {user && (
+            <div className="user-menu push">
+              {user.avatar ? <img className="avatar" src={user.avatar} alt="" referrerPolicy="no-referrer" /> : <span className="avatar fallback">{user.name[0]}</span>}
+              <span className="user-name">{user.name}</span>
+              <button className="icon-btn" onClick={signOut} aria-label="Sign out" title="Sign out">
+                <LogOut size={17} />
+              </button>
+            </div>
+          )}
         </header>
         <div className="content">{children}</div>
       </div>
