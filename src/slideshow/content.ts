@@ -115,3 +115,34 @@ export const SOUNDS: Sound[] = [
   { title: "Too Sweet", artist: "Hozier" },
   { title: "Die With A Smile", artist: "Lady Gaga, Bruno Mars" },
 ];
+
+export interface Caption {
+  topic: TopicId;
+  title: string; // the bold line above the post
+  text: string; // the description, before hashtags
+}
+
+export const CAPTIONS: Caption[] = [
+  { topic: "home", title: "stop posting these", text: "one setting and one habit took me two minutes and made me so much harder to find. check your camera location first. i checked my area on warden after." },
+  { topic: "home", title: "your photos know where you live", text: "turn the location off for your camera, not just one app. then look at what is in your background before you post. it is easier than it sounds." },
+  { topic: "home", title: "settings to change tonight", text: "i did these on a tuesday night and haven't thought about them since. save this for when you have five minutes." },
+
+  { topic: "moving", title: "things to do before you move in", text: "start with the neighbours. i ran the address through warden first. then the locks, the lighting and the deliveries. it is a ten minute checklist and you will be so glad you did it." },
+  { topic: "moving", title: "new apartment rules", text: "say we, not i. change the locks. check the area on warden before you sign anything. send this to someone who is moving soon." },
+  { topic: "moving", title: "before you sign the lease", text: "walk the building at night, check the block on warden, and ask who has keys. nobody tells you to do this stuff until after." },
+
+  { topic: "going-out", title: "first date safety, the real version", text: "public place, your own ride, and one friend who knows the plan. none of this is paranoid. it is just smart. save it for your next date." },
+  { topic: "going-out", title: "do this before you go out tonight", text: "share your location, agree on a code word, and keep your drink in your hand. send this to the friend who always forgets." },
+  { topic: "going-out", title: "the rules i wish i knew sooner", text: "trust the weird feeling and plan your own way home. you never owe anyone an explanation for leaving." },
+
+  { topic: "commuting", title: "walking home alone? read this", text: "one earbud out, keys in your hand, and share your trip. small things that add up. i check new areas on warden before i travel." },
+  { topic: "commuting", title: "travel safety for solo girls", text: "ask for a room off the ground floor, never say your room number out loud, and post the photos after you are home." },
+  { topic: "commuting", title: "my commute rules", text: "park under lights, vary your route, and know where the exits are. look up the area on warden if it is somewhere new." },
+];
+
+export const HASHTAGS: Record<TopicId, string[]> = {
+  home: ["#safetytips", "#onlinesafety", "#privacy", "#wardenapp"],
+  moving: ["#safetytips", "#onlinesafety", "#livingalone", "#womenssafety", "#wardenapp"],
+  "going-out": ["#safetytips", "#datingsafety", "#womenssafety", "#wardenapp"],
+  commuting: ["#safetytips", "#travelsafety", "#womenssafety", "#wardenapp"],
+};

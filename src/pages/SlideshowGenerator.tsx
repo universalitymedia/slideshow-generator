@@ -1,11 +1,13 @@
 import { zipSync } from "fflate";
 import { Copy, Download, ExternalLink, Images, Music2, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
+import { CaptionCard } from "../components/CaptionCard";
 import { SlideCard } from "../components/SlideCard";
 import type { PersonaId, TopicId } from "../slideshow/content";
 import {
   generate,
   personaLabel,
+  pickCaption,
   personasFor,
   soundUrl,
   topicLabel,
@@ -159,6 +161,11 @@ export function SlideshowGenerator() {
               />
             ))}
           </section>
+
+          <CaptionCard
+            caption={show.caption}
+            onShuffle={() => setShow({ ...show, caption: pickCaption(Math.random, show.topic, show.caption) })}
+          />
         </>
       )}
     </div>

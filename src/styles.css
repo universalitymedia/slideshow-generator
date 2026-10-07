@@ -137,3 +137,9 @@ select {
   .field { flex: 1 1 100%; }
   .btn.primary.push { margin-left: 0; width: 100%; justify-content: center; }
 }
+
+.caption { margin-top: 22px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.caption-head { display: flex; align-items: center; gap: 14px; }
+.caption-block { background: var(--muted-bg); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.caption-block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.caption-block-head strong { font-size: 13px; letter-spacing: .02em; margin-right: 6px; }

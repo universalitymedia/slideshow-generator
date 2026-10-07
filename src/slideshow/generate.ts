@@ -1,5 +1,5 @@
-import { CTAS, HOOKS, PERSONAS, SOUNDS, TIPS, TOPICS, type PersonaId, type Sound, type TopicId } from "./content";
-import { mulberry32, pick, shuffle } from "./rng";
+import { CAPTIONS, CTAS, HASHTAGS, HOOKS, PERSONAS, SOUNDS, TIPS, TOPICS, type Caption, type PersonaId, type Sound, type TopicId } from "./content";
+import { mulberry32, pick, shuffle, type Rand } from "./rng";
 import { imagePool, type ImageSource } from "./images";
 
 export type SlideKind = "hook" | "tip" | "cta";
@@ -15,6 +15,7 @@ export interface Slideshow {
   persona: PersonaId;
   topic: TopicId;
   sound: Sound;
+  caption: Caption;
   slides: Slide[];
 }
 
@@ -57,8 +58,16 @@ export function generate(seed: number, opts: Options): Slideshow {
     { kind: "cta", text: pick(rand, CTAS), image: images[total - 1] },
   ];
 
-  return { seed, persona: hook.persona, topic: hook.topic, sound: pick(rand, SOUNDS), slides };
+  return { seed, persona: hook.persona, topic: hook.topic, sound: pick(rand, SOUNDS), caption: pickCaption(rand, hook.topic), slides };
 }
+
+/** A caption for the topic. Pass `not` to get a different one when shuffling. */
+export function pickCaption(rand: Rand, topic: TopicId, not?: Caption): Caption {
+  const options = CAPTIONS.filter((c) => c.topic === topic && c !== not);
+  return pick(rand, options);
+}
+
+export const captionDescription = (c: Caption) => `${c.text} ${HASHTAGS[c.topic].join(" ")}`;
 
 export const personaLabel = (id: PersonaId) => PERSONAS.find((p) => p.id === id)!.label;
 export const topicLabel = (id: TopicId) => TOPICS.find((t) => t.id === id)!.label;
