@@ -1,18 +1,21 @@
 import { Check, Copy, Download } from "lucide-react";
 import { useState } from "react";
 import type { Slide } from "../slideshow/generate";
-import { previewUrl } from "../slideshow/images";
+import type { SlideStyle } from "../slideshow/styles";
+import { SlidePreview } from "./SlidePreview";
 
 const LABEL = { hook: "Hook", tip: "Tip", cta: "CTA" } as const;
 
 export function SlideCard({
   slide,
   index,
+  style,
   onCopy,
   onDownload,
 }: {
   slide: Slide;
   index: number;
+  style: SlideStyle;
   onCopy: () => Promise<void>;
   onDownload: () => Promise<void>;
 }) {
@@ -26,9 +29,7 @@ export function SlideCard({
 
   return (
     <article className="card slide">
-      <div className="preview" style={{ backgroundImage: `url(${previewUrl(slide.image)})` }}>
-        <p className="overlay"><span>{slide.text}</span></p>
-      </div>
+      <SlidePreview image={slide.image} text={slide.text} style={style} />
       <div className="slide-meta">
         <span className="num">{String(index + 1).padStart(2, "0")}</span>
         <span className={`badge ${slide.kind}`}>{LABEL[slide.kind]}</span>

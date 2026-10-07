@@ -26,6 +26,9 @@ const sceneSources: ImageSource[] = SCENE_NAMES.map((name, i) => ({ kind: "scene
 
 export const usingRealPhotos = photoSources.length > 0;
 
+/** Image used for style previews before anything is generated. */
+export const sampleImage: ImageSource = photoSources[0] ?? sceneSources[0];
+
 /** Distinct images for one slideshow. Repeats only if the pool is smaller than the slideshow. */
 export function imagePool(rand: Rand, count: number): ImageSource[] {
   const pool = usingRealPhotos ? photoSources : sceneSources;
@@ -80,11 +83,12 @@ function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, seed: nu
 }
 
 /** Paint a source onto a canvas of the given size, cropping photos to cover. */
-export async function paint(source: ImageSource, w: number, h: number): Promise<HTMLCanvasElement> {
+export async function paint(source: ImageSource, w: number, h: number, filter = "none"): Promise<HTMLCanvasElement> {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
+  ctx.filter = filter; // ignored by browsers without canvas filter support
   if (source.kind === "scene") {
     drawScene(ctx, w, h, source.seed);
     return canvas;
@@ -117,8 +121,8 @@ export function previewUrl(source: ImageSource): string {
   return url;
 }
 
-export async function renderBlob(source: ImageSource): Promise<Blob> {
-  const canvas = await paint(source, SLIDE_W, SLIDE_H);
+export async function renderBlob(source: ImageSource, filter = "none"): Promise<Blob> {
+  const canvas = await paint(source, SLIDE_W, SLIDE_H, filter);
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not encode image"))), "image/png"),
   );

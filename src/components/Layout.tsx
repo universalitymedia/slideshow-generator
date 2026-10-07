@@ -1,23 +1,9 @@
-import { ChevronRight, LayoutDashboard, Moon, PanelLeft, Shield, Sun } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { ChevronRight, LayoutDashboard, PanelLeft, Shield } from "lucide-react";
+import { useState, type ReactNode } from "react";
 import { href } from "../router";
 import { PLATFORMS, TOOLS } from "../tools";
 
-function useTheme() {
-  const [theme, setTheme] = useState<"dark" | "light">(() =>
-    document.documentElement.dataset.theme === "light" ? "light" : "dark",
-  );
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-    try {
-      localStorage.setItem("theme", theme);
-    } catch {}
-  }, [theme]);
-  return [theme, () => setTheme((t) => (t === "dark" ? "light" : "dark"))] as const;
-}
-
 export function Layout({ route, children }: { route: string; children: ReactNode }) {
-  const [theme, toggleTheme] = useTheme();
   const [open, setOpen] = useState(true);
   const tool = TOOLS.find((t) => t.path === route);
   const platform = tool && PLATFORMS.find((p) => p.label === tool.platform);
@@ -75,9 +61,6 @@ export function Layout({ route, children }: { route: string; children: ReactNode
               <li aria-current="page">Dashboard</li>
             )}
           </ol>
-          <button className="icon-btn push" onClick={toggleTheme} aria-label="Toggle theme">
-            {theme === "dark" ? <Moon size={18} /> : <Sun size={18} />}
-          </button>
         </header>
         <div className="content">{children}</div>
       </div>

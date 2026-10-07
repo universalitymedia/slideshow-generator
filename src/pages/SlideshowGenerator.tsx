@@ -1,7 +1,8 @@
 import { zipSync } from "fflate";
-import { Copy, Download, ExternalLink, Images, Music2, Sparkles } from "lucide-react";
+import { ChevronDown, Copy, Download, ExternalLink, Images, Music2, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 import { CaptionCard } from "../components/CaptionCard";
+import { StylePicker } from "../components/StylePicker";
 import { SlideCard } from "../components/SlideCard";
 import type { PersonaId, TopicId } from "../slideshow/content";
 import {
@@ -17,6 +18,7 @@ import {
 } from "../slideshow/generate";
 import { renderBlob, usingRealPhotos } from "../slideshow/images";
 import { newSeed } from "../slideshow/rng";
+import { DEFAULT_STYLE, type SlideStyle } from "../slideshow/styles";
 import { TOOLS } from "../tools";
 
 const tool = TOOLS[0];
@@ -34,6 +36,7 @@ const seedId = (seed: number) => seed.toString(16).padStart(8, "0");
 export function SlideshowGenerator() {
   const [opts, setOpts] = useState<Options>({ persona: "any", topic: "any", slides: "random" });
   const [show, setShow] = useState<Slideshow | null>(null);
+  const [style, setStyle] = useState<SlideStyle>(DEFAULT_STYLE);
   const [busy, setBusy] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
 
@@ -56,7 +59,7 @@ export function SlideshowGenerator() {
     try {
       const files: Record<string, Uint8Array> = {};
       for (const [i, s] of show.slides.entries()) {
-        files[`slide-${String(i + 1).padStart(2, "0")}.png`] = new Uint8Array(await (await renderBlob(s.image)).arrayBuffer());
+        files[`slide-${String(i + 1).padStart(2, "0")}.png`] = new Uint8Array(await (await renderBlob(s.image, style.filter)).arrayBuffer());
       }
       files["captions.txt"] = new TextEncoder().encode(allText());
       save(new Blob([zipSync(files, { level: 0 }) as BlobPart], { type: "application/zip" }), `slideshow-${seedId(show.seed)}.zip`);
@@ -75,43 +78,50 @@ export function SlideshowGenerator() {
         </div>
       </header>
 
-      <section className="card controls">
-        <label className="field">
-          <span>Told by</span>
-          <select
-            value={opts.persona}
-            onChange={(e) => setOpts({ ...opts, persona: e.target.value as PersonaId | "any" })}
-          >
-            <option value="any">Anyone</option>
-            {personas.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-          </select>
-        </label>
-
-        <label className="field">
-          <span>Topic</span>
-          <select
-            value={opts.topic}
-            onChange={(e) => setOpts({ ...opts, topic: e.target.value as TopicId | "any" })}
-          >
-            <option value="any">Any theme</option>
-            {topics.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-          </select>
-        </label>
-
-        <div className="field">
-          <span>Slides</span>
-          <div className="segmented" role="group" aria-label="Slides">
-            {SLIDE_CHOICES.map((n) => (
-              <button key={n} className={opts.slides === n ? "on" : ""} onClick={() => setOpts({ ...opts, slides: n })}>
-                {n === "random" ? "Random" : n}
-              </button>
-            ))}
+      <section className="card panel">
+        <div className="panel-head">
+          <div>
+            <h2>Style</h2>
+            <p className="muted small">Pick a look. Each preview shows exactly how your slides will be styled.</p>
           </div>
+          <button className="btn primary" onClick={run}>
+            <Sparkles size={16} /> {show ? "Regenerate" : "Generate slideshow"}
+          </button>
         </div>
 
-        <button className="btn primary push" onClick={run}>
-          <Sparkles size={16} /> {show ? "Regenerate" : "Generate slideshow"}
-        </button>
+        <StylePicker value={style} onChange={setStyle} />
+
+        <details className="more">
+          <summary><ChevronDown size={16} /> Story options</summary>
+          <div className="controls">
+            <label className="field">
+              <span>Told by</span>
+              <select value={opts.persona} onChange={(e) => setOpts({ ...opts, persona: e.target.value as PersonaId | "any" })}>
+                <option value="any">Anyone</option>
+                {personas.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Topic</span>
+              <select value={opts.topic} onChange={(e) => setOpts({ ...opts, topic: e.target.value as TopicId | "any" })}>
+                <option value="any">Any theme</option>
+                {topics.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </label>
+
+            <div className="field">
+              <span>Slides</span>
+              <div className="segmented" role="group" aria-label="Slides">
+                {SLIDE_CHOICES.map((n) => (
+                  <button key={n} className={opts.slides === n ? "on" : ""} onClick={() => setOpts({ ...opts, slides: n })}>
+                    {n === "random" ? "Random" : n}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </details>
       </section>
 
       {!show ? (
@@ -138,7 +148,7 @@ export function SlideshowGenerator() {
             <span className="chip">{topicLabel(show.topic)}</span>
             <span className="muted small">
               {show.slides.length} slides · #{seedId(show.seed)} ·{" "}
-              {usingRealPhotos ? "Text is a preview: the photos download without it." : "Placeholder scenes. Add photos to src/assets/photos to use your own."}
+              {usingRealPhotos ? "Text is a preview: the photos download without it, with the style's filter applied." : "Placeholder scenes. Add photos to src/assets/photos to use your own."}
             </span>
             <div className="push row">
               <button className="btn outline" onClick={downloadAll} disabled={busy}>
@@ -155,9 +165,10 @@ export function SlideshowGenerator() {
               <SlideCard
                 key={`${show.seed}-${i}`}
                 slide={s}
+                style={style}
                 index={i}
                 onCopy={() => navigator.clipboard.writeText(s.text)}
-                onDownload={async () => save(await renderBlob(s.image), `slide-${String(i + 1).padStart(2, "0")}.png`)}
+                onDownload={async () => save(await renderBlob(s.image, style.filter), `slide-${String(i + 1).padStart(2, "0")}.png`)}
               />
             ))}
           </section>
