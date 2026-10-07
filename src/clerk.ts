@@ -1,6 +1,9 @@
 import { dark } from "@clerk/ui/themes";
 
-export const publishableKey: string | undefined = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+// Publishable keys are safe to ship in front-end code. VITE_CLERK_PUBLISHABLE_KEY overrides the default,
+// e.g. to point a deployment at a production Clerk instance.
+export const publishableKey: string | undefined =
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ?? "pk_test_cmVhbC13aGlwcGV0LTI5MTMuY2xlcmsuYWNjb3VudHMuZGV2JA";
 
 // Same palette as the rest of the app.
 export const appearance = {

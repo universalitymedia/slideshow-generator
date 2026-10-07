@@ -4,13 +4,12 @@ Dashboard of tools for making creator content. First tool: the TikTok **Liftly S
 
 ```
 npm install
-cp .env.example .env.local   # then add your Clerk publishable key
 npm run dev
 ```
 
 ## Login (Clerk)
 
-Creators sign in with Clerk before they can see any tool. Set `VITE_CLERK_PUBLISHABLE_KEY` in `.env.local` (Clerk dashboard > API keys). Without it the app shows a setup screen. Clerk app id: `app_3KN1wjZtile0XJn7L5Wa0KRPze9`. Sign-in methods, sign-ups and invitations are configured in the Clerk dashboard. Never put the secret key in this app.
+Creators sign in with Clerk before they can see any tool. The development publishable key is set in `src/clerk.ts` (safe to be public). To use another Clerk instance, set `VITE_CLERK_PUBLISHABLE_KEY` in `.env.local`. Clerk app id: `app_3KN1wjZtile0XJn7L5Wa0KRPze9`. Sign-in methods, sign-ups and invitations are configured in the Clerk dashboard. Never put the secret key in this app.
 
 ## Liftly Slideshow Generator
 
