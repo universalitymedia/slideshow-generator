@@ -177,3 +177,14 @@ select {
   select { min-width: 0; width: 100%; }
   .field { flex: 1 1 100%; }
 }
+
+/* Auth */
+.auth-page { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; padding: 40px 16px; background: var(--bg); }
+.auth-brand { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.auth-brand h1 { font-size: 26px; margin-top: 8px; }
+.logo.lg { width: 64px; height: 64px; border-radius: 18px; }
+.auth-card { max-width: 460px; padding: 28px; display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+.auth-card pre { margin: 0; width: 100%; padding: 12px 14px; border-radius: 10px; background: var(--bg); border: 1px solid var(--border); overflow-x: auto; font-size: 13px; }
+code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--muted-bg); padding: 1px 6px; border-radius: 6px; }
+.spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--text); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

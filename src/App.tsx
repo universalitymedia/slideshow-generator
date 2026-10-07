@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { AuthGate } from "./components/AuthGate";
 import { Layout } from "./components/Layout";
 import { Dashboard } from "./pages/Dashboard";
 import { SlideshowGenerator } from "./pages/SlideshowGenerator";
@@ -14,8 +15,10 @@ export function App() {
   }, [tool]);
 
   return (
-    <Layout route={route}>
-      {route === "/tiktok/slideshow-generator" ? <SlideshowGenerator /> : <Dashboard />}
-    </Layout>
+    <AuthGate>
+      <Layout route={route}>
+        {route === "/tiktok/slideshow-generator" ? <SlideshowGenerator /> : <Dashboard />}
+      </Layout>
+    </AuthGate>
   );
 }

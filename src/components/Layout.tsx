@@ -1,3 +1,4 @@
+import { UserButton } from "@clerk/react";
 import { ChevronRight, LayoutDashboard, PanelLeft } from "lucide-react";
 import logo from "../assets/brand/logo.png";
 import { useState, type ReactNode } from "react";
@@ -62,6 +63,7 @@ export function Layout({ route, children }: { route: string; children: ReactNode
               <li aria-current="page">Dashboard</li>
             )}
           </ol>
+          <div className="push"><UserButton /></div>
         </header>
         <div className="content">{children}</div>
       </div>

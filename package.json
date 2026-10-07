@@ -9,6 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@clerk/react": "^6.17.6",
+    "@clerk/ui": "^1.39.0",
     "fflate": "^0.8.2",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
