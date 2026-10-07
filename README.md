@@ -1,13 +1,13 @@
-# Warden Creator Tools
+# Universality Tool's
 
-Dashboard of tools for making Warden creator content. First tool: the TikTok **Slideshow Generator**.
+Dashboard of tools for making creator content. First tool: the TikTok **Liftly Slideshow Generator**.
 
 ```
 npm install
 npm run dev
 ```
 
-## Slideshow Generator
+## Liftly Slideshow Generator
 
 Pick who is telling the story, a topic and a slide count (6 to 8, or random), then generate. You get a hook, tips and a CTA as slides, a suggested sound, per-slide copy and image download, and "Download all images" (a zip of PNGs plus `captions.txt`).
 

@@ -10,7 +10,7 @@ export function App() {
   const tool = TOOLS.find((t) => t.path === route);
 
   useEffect(() => {
-    document.title = tool ? `${tool.title} · Warden Creator Tools` : "Dashboard · Warden Creator Tools";
+    document.title = tool ? `${tool.title} · Universality Tool's` : "Dashboard · Universality Tool's";
   }, [tool]);
 
   return (

@@ -6,7 +6,7 @@ export function Dashboard() {
   return (
     <div className="page">
       <h1>Dashboard</h1>
-      <p className="muted">Every tool for making Warden creator content, in one place.</p>
+      <p className="muted">Every tool for making creator content, in one place.</p>
 
       <div className="section-head">
         <h2>Tools</h2>
@@ -17,7 +17,7 @@ export function Dashboard() {
         {TOOLS.map((t) => (
           <a key={t.id} className="card tool-card" href={href(t.path)}>
             <div className="tool-card-top">
-              <span className="tile"><t.icon size={20} /></span>
+              <span className="tile"><img src={t.iconSrc} alt="" /></span>
               <ArrowUpRight size={16} className="muted" />
             </div>
             <h3>{t.title}</h3>

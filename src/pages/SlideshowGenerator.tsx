@@ -71,7 +71,7 @@ export function SlideshowGenerator() {
   return (
     <div className="page wide">
       <header className="tool-header">
-        <span className="tile lg"><tool.icon size={22} /></span>
+        <span className="tile lg"><img src={tool.iconSrc} alt="" /></span>
         <div>
           <h1>{tool.title}</h1>
           <p className="muted">{tool.description}</p>

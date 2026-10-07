@@ -1,4 +1,5 @@
-import { ChevronRight, LayoutDashboard, PanelLeft, Shield } from "lucide-react";
+import { ChevronRight, LayoutDashboard, PanelLeft } from "lucide-react";
+import logo from "../assets/brand/logo.png";
 import { useState, type ReactNode } from "react";
 import { href } from "../router";
 import { PLATFORMS, TOOLS } from "../tools";
@@ -12,9 +13,9 @@ export function Layout({ route, children }: { route: string; children: ReactNode
     <div className={`shell ${open ? "" : "collapsed"}`}>
       <aside className="sidebar">
         <a className="brand" href={href("/")}>
-          <span className="logo"><Shield size={18} /></span>
+          <img className="logo" src={logo} alt="" />
           <span>
-            <strong>Warden</strong>
+            <strong>Universality Tool's</strong>
             <small>Creator Tools</small>
           </span>
         </a>
