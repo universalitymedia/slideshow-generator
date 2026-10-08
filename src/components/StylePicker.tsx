@@ -1,7 +1,6 @@
 import { Check } from "lucide-react";
-import { previewImage } from "../slideshow/styleUtils";
 import type { SlideStyle } from "../slideshow/styles";
-import { SlidePreview } from "./SlidePreview";
+import { PreviewStack } from "./PreviewStack";
 
 export function StylePicker({ styles, value, onChange }: { styles: SlideStyle[]; value: string; onChange: (id: string) => void }) {
   return (
@@ -10,7 +9,7 @@ export function StylePicker({ styles, value, onChange }: { styles: SlideStyle[];
         const on = s.id === value;
         return (
           <button key={s.id} role="radio" aria-checked={on} className={`style-card ${on ? "on" : ""}`} onClick={() => onChange(s.id)}>
-            <SlidePreview image={previewImage(s)} text={s.previewText} style={s} small />
+            <PreviewStack urls={s.previews} />
             <span className="style-name">
               {s.name}
               {on && <Check size={14} />}

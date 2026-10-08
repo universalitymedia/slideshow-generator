@@ -1,21 +1,16 @@
 import { Check, Copy, Download } from "lucide-react";
 import { useState } from "react";
 import type { Slide } from "../slideshow/generate";
-import type { SlideStyle } from "../slideshow/styles";
 import { SlidePreview } from "./SlidePreview";
-
-const LABEL = { hook: "Hook", tip: "Tip", cta: "CTA" } as const;
 
 export function SlideCard({
   slide,
   index,
-  style,
   onCopy,
   onDownload,
 }: {
   slide: Slide;
   index: number;
-  style: SlideStyle;
   onCopy: () => Promise<void>;
   onDownload: () => Promise<void>;
 }) {
@@ -29,14 +24,14 @@ export function SlideCard({
 
   return (
     <article className="card slide">
-      <SlidePreview image={slide.image} text={slide.text} style={style} />
+      <SlidePreview image={slide.image} />
       <div className="slide-meta">
         <span className="num">{String(index + 1).padStart(2, "0")}</span>
-        <span className={`badge ${slide.kind}`}>{LABEL[slide.kind]}</span>
+        <span className={`badge ${slide.kind}`}>{slide.label}</span>
       </div>
-      <p className="slide-text">{slide.text}</p>
+      {slide.text ? <p className="slide-text">{slide.text}</p> : <p className="slide-text muted">No text for this picture.</p>}
       <div className="slide-actions">
-        <button className="btn outline sm" onClick={copy}>
+        <button className="btn outline sm" onClick={copy} disabled={!slide.text}>
           {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy text"}
         </button>
         <button className="btn ghost sm" onClick={onDownload}>

@@ -26,13 +26,10 @@ const sceneSources: ImageSource[] = SCENE_NAMES.map((name, i) => ({ kind: "scene
 
 export const usingRealPhotos = photoSources.length > 0;
 
-/** Image used for style previews before anything is generated. */
-export const sampleImage: ImageSource = photoSources[0] ?? sceneSources[0];
-
 /** Distinct images for one slideshow. Repeats only if the pool is smaller than the slideshow. */
-/** `custom` is a style's own photos. They win over the folder photos and the placeholder scenes. */
-export function imagePool(rand: Rand, count: number, custom: ImageSource[] = []): ImageSource[] {
-  const pool = custom.length ? custom : usingRealPhotos ? photoSources : sceneSources;
+/** Built-in pictures for positions a style has no uploads for: folder photos if any, else placeholder scenes. */
+export function imagePool(rand: Rand, count: number): ImageSource[] {
+  const pool = usingRealPhotos ? photoSources : sceneSources;
   const shuffled = shuffle(rand, pool);
   return Array.from({ length: count }, (_, i) => shuffled[i % shuffled.length]);
 }
@@ -84,12 +81,11 @@ function drawScene(ctx: CanvasRenderingContext2D, w: number, h: number, seed: nu
 }
 
 /** Paint a source onto a canvas of the given size, cropping photos to cover. */
-export async function paint(source: ImageSource, w: number, h: number, filter = "none"): Promise<HTMLCanvasElement> {
+export async function paint(source: ImageSource, w: number, h: number): Promise<HTMLCanvasElement> {
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d")!;
-  ctx.filter = filter; // ignored by browsers without canvas filter support
   if (source.kind === "scene") {
     drawScene(ctx, w, h, source.seed);
     return canvas;
@@ -122,9 +118,17 @@ export function previewUrl(source: ImageSource): string {
   return url;
 }
 
-export async function renderBlob(source: ImageSource, filter = "none"): Promise<Blob> {
-  const canvas = await paint(source, SLIDE_W, SLIDE_H, filter);
+async function renderBlob(source: ImageSource): Promise<Blob> {
+  const canvas = await paint(source, SLIDE_W, SLIDE_H);
   return new Promise((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Could not encode image"))), "image/png"),
   );
+}
+
+/** The file to download for a slide: an uploaded picture is sent as uploaded, a placeholder scene is rendered as a PNG. */
+export async function imageFile(source: ImageSource): Promise<{ blob: Blob; ext: string }> {
+  if (source.kind === "scene") return { blob: await renderBlob(source), ext: "png" };
+  const res = await fetch(source.url);
+  if (!res.ok) throw new Error("Could not load the picture");
+  return { blob: await res.blob(), ext: source.url.split(".").pop()!.split("?")[0] || "png" };
 }

@@ -17,12 +17,11 @@ import {
   topicsFor,
   type Options,
 } from "../slideshow/generate";
-import { renderBlob, usingRealPhotos } from "../slideshow/images";
+import { imageFile } from "../slideshow/images";
 import { newSeed } from "../slideshow/rng";
 import { TOOLS } from "../tools";
 
 const tool = TOOLS[0];
-const SLIDE_CHOICES: Options["slides"][] = ["random", 6, 7, 8];
 
 function save(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -37,8 +36,8 @@ export function SlideshowGenerator() {
   const [styles, setStyles] = useState<SlideStyle[] | null>(null);
   const [loadError, setLoadError] = useState("");
   const [styleId, setStyleId] = useState("");
-  const [opts, setOpts] = useState<Options>({ persona: "any", topic: "any", slides: "random" });
-  // What the last click on Generate used. Changing the style afterwards re-renders the same slideshow in the new style.
+  const [opts, setOpts] = useState<Options>({ persona: "any", topic: "any" });
+  // What the last click on Generate used. Changing the style afterwards builds the same slideshow from the new style.
   const [params, setParams] = useState<{ seed: number; opts: Options } | null>(null);
   const [captionPick, setCaptionPick] = useState<{ key: string; caption: Caption } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -58,7 +57,7 @@ export function SlideshowGenerator() {
   const personas = useMemo(() => personasFor(opts.topic), [opts.topic]);
 
   const run = () => { setCaptionPick(null); setParams({ seed: newSeed(), opts: { ...opts } }); };
-  const allText = () => show!.slides.map((s) => s.text).join("\n\n");
+  const allText = () => show!.slides.map((s) => s.text).filter(Boolean).join("\n\n");
 
   async function copyAll() {
     await navigator.clipboard.writeText(allText());
@@ -66,13 +65,17 @@ export function SlideshowGenerator() {
     setTimeout(() => setCopiedAll(false), 1500);
   }
 
+  const usesBuiltIn = !!show && show.slides.some((s) => s.image.kind === "scene" || !s.image.url.startsWith("/uploads/"));
+  const fileName = (i: number, ext: string) => `slide-${String(i + 1).padStart(2, "0")}.${ext}`;
+
   async function downloadAll() {
-    if (!show || !style) return;
+    if (!show) return;
     setBusy(true);
     try {
       const files: Record<string, Uint8Array> = {};
       for (const [i, s] of show.slides.entries()) {
-        files[`slide-${String(i + 1).padStart(2, "0")}.png`] = new Uint8Array(await (await renderBlob(s.image, style!.filter)).arrayBuffer());
+        const { blob, ext } = await imageFile(s.image);
+        files[fileName(i, ext)] = new Uint8Array(await blob.arrayBuffer());
       }
       files["captions.txt"] = new TextEncoder().encode(allText());
       save(new Blob([zipSync(files, { level: 0 }) as BlobPart], { type: "application/zip" }), `slideshow-${seedId(show.seed)}.zip`);
@@ -95,7 +98,7 @@ export function SlideshowGenerator() {
         <div className="panel-head">
           <div>
             <h2>Style</h2>
-            <p className="muted small">Pick a look. Each preview shows exactly how your slides will be styled.</p>
+            <p className="muted small">Pick a style. Each card previews what it makes.</p>
           </div>
           <button className="btn primary" onClick={run} disabled={!style}>
             <Sparkles size={16} /> {show ? "Regenerate" : "Generate slideshow"}
@@ -106,7 +109,7 @@ export function SlideshowGenerator() {
 
         <details className="more">
           <summary><ChevronDown size={16} /> Story options</summary>
-          <p className="muted small more-hint">Told by and Topic shape the built-in content. A style with its own hooks uses those instead of Told by.</p>
+          <p className="muted small more-hint">These only shape the built-in text and the caption. Positions with uploaded pictures use the text written for them.</p>
           <div className="controls">
             <label className="field">
               <span>Told by</span>
@@ -124,16 +127,6 @@ export function SlideshowGenerator() {
               </select>
             </label>
 
-            <div className="field">
-              <span>Slides</span>
-              <div className="segmented" role="group" aria-label="Slides">
-                {SLIDE_CHOICES.map((n) => (
-                  <button key={n} className={opts.slides === n ? "on" : ""} onClick={() => setOpts({ ...opts, slides: n })}>
-                    {n === "random" ? "Random" : n}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </details>
       </section>
@@ -158,11 +151,11 @@ export function SlideshowGenerator() {
           </section>
 
           <section className="result-head">
-            {show.persona && <span className="chip solid">{personaLabel(show.persona)}</span>}
+            <span className="chip solid">{personaLabel(show.persona)}</span>
             <span className="chip">{topicLabel(show.topic)}</span>
             <span className="muted small">
               {show.slides.length} slides · #{seedId(show.seed)} ·{" "}
-              {usingRealPhotos ? "Text is a preview: the photos download without it, with the style's filter applied." : "Placeholder scenes. Add photos to src/assets/photos to use your own."}
+              {usesBuiltIn ? "Some positions have no uploaded picture yet, so they use built-in ones." : "Copy the text for each picture, then add it in TikTok."}
             </span>
             <div className="push row">
               <button className="btn outline" onClick={downloadAll} disabled={busy}>
@@ -179,10 +172,9 @@ export function SlideshowGenerator() {
               <SlideCard
                 key={`${show.seed}-${i}`}
                 slide={s}
-                style={style!}
                 index={i}
                 onCopy={() => navigator.clipboard.writeText(s.text)}
-                onDownload={async () => save(await renderBlob(s.image, style!.filter), `slide-${String(i + 1).padStart(2, "0")}.png`)}
+                onDownload={async () => { const { blob, ext } = await imageFile(s.image); save(blob, fileName(i, ext)); }}
               />
             ))}
           </section>

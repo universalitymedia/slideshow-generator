@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { SEED_STYLES, type SlideStyle } from "../src/slideshow/styles.ts";
+import { defaultFormat, SEED_STYLES, type SlideStyle } from "../src/slideshow/styles.ts";
 import { config } from "./config.ts";
 
 // Small JSON file store. Fine for a handful of admins editing a handful of styles.
@@ -13,8 +13,20 @@ interface Db {
   styles: SlideStyle[];
 }
 
+/** Styles saved before formats existed keep their name and description and get the default format. */
 function load(): Db {
-  if (existsSync(dbFile)) return JSON.parse(readFileSync(dbFile, "utf8"));
+  if (existsSync(dbFile)) {
+    const raw = JSON.parse(readFileSync(dbFile, "utf8")) as { styles: Partial<SlideStyle>[] };
+    let changed = false;
+    const styles = raw.styles.map((s) => {
+      if (Array.isArray(s.format)) return s as SlideStyle;
+      changed = true;
+      return { id: s.id!, name: s.name ?? "Style", blurb: s.blurb ?? "", previews: [], format: defaultFormat(), slides: [] } satisfies SlideStyle;
+    });
+    const db: Db = { styles };
+    if (changed) persist(db);
+    return db;
+  }
   const db: Db = { styles: structuredClone(SEED_STYLES) };
   persist(db);
   return db;
@@ -51,7 +63,7 @@ export function removeStyle(id: string): boolean {
 
 /** Delete uploads no style references. Recent files are kept: they may be waiting for the admin to hit Save. */
 function collectGarbage() {
-  const used = new Set(db.styles.flatMap((s) => s.items.map((i) => i.url?.split("/").pop())));
+  const used = new Set(db.styles.flatMap((s) => [...s.previews, ...s.slides.map((i) => i.url)].map((u) => u.split("/").pop())));
   for (const f of readdirSync(uploadsDir)) {
     if (used.has(f)) continue;
     const path = join(uploadsDir, f);

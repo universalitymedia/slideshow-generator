@@ -2,26 +2,24 @@ import { CAPTIONS, CTAS, HASHTAGS, HOOKS, PERSONAS, SOUNDS, TIPS, TOPICS, type C
 import { mulberry32, pick, shuffle, type Rand } from "./rng";
 import { imagePool, type ImageSource } from "./images";
 import { photoSource } from "./styleUtils";
-import type { SlideStyle } from "./styles";
-
-export type SlideKind = "hook" | "tip" | "cta";
+import { slotLabels, type SlideStyle } from "./styles";
 
 export interface Slide {
-  kind: SlideKind;
-  text: string;
+  kind: "slide" | "cta";
+  label: string; // "Slide 2", "CTA"
+  text: string; // what the creator copies for this picture
   image: ImageSource;
 }
 
 export interface Options {
   persona: PersonaId | "any";
   topic: TopicId | "any";
-  slides: number | "random"; // 6 to 8, hook and CTA included
 }
 
 export interface Slideshow {
   seed: number;
   opts: Options;
-  persona?: PersonaId; // not set when the hook comes from a style's own items
+  persona: PersonaId;
   topic: TopicId;
   sound: Sound;
   caption: Caption;
@@ -38,48 +36,40 @@ export function personasFor(topic: TopicId | "any") {
   return PERSONAS.filter((p) => HOOKS.some((h) => h.persona === p.id && (topic === "any" || h.topic === topic)));
 }
 
-const texts = (style: SlideStyle, type: "hook" | "tip" | "cta") => style.items.filter((i) => i.type === type && i.text).map((i) => i.text!);
-
 /**
- * Same seed, options and style always give the same slideshow.
- * A style's own hooks, CTAs and photos replace the built-in ones. Its own tips come first and the built-in tips fill any gap.
+ * One slide per position in the style's format. A position with uploaded pictures gets one of them at random,
+ * with the text the admin wrote for it. A position with none gets a built-in picture and built-in text, so a
+ * fresh style still produces a full slideshow. Same seed, options and style always give the same result.
  */
 export function generate(seed: number, opts: Options, style: SlideStyle): Slideshow {
   const rand = mulberry32(seed);
 
-  const ownHooks = texts(style, "hook");
-  let hookText: string;
-  let persona: PersonaId | undefined;
-  let topic: TopicId;
-  if (ownHooks.length) {
-    hookText = pick(rand, ownHooks);
-    topic = opts.topic === "any" ? pick(rand, TOPICS).id : opts.topic;
-  } else {
-    const hooks = HOOKS.filter(
-      (h) => (opts.persona === "any" || h.persona === opts.persona) && (opts.topic === "any" || h.topic === opts.topic),
-    );
-    const hook = pick(rand, hooks);
-    ({ text: hookText, persona, topic } = hook);
-  }
+  const hooks = HOOKS.filter(
+    (h) => (opts.persona === "any" || h.persona === opts.persona) && (opts.topic === "any" || h.topic === opts.topic),
+  );
+  const hook = pick(rand, hooks);
+  const topical = shuffle(rand, TIPS.filter((t) => t.topic === hook.topic));
+  const rest = shuffle(rand, TIPS.filter((t) => t.topic !== hook.topic));
+  const tips = [...topical, ...rest].map((t) => t.text);
+  const fallbackImages = imagePool(rand, style.format.length);
+  const labels = slotLabels(style.format);
 
-  const total = opts.slides === "random" ? 6 + Math.floor(rand() * 3) : opts.slides;
-  const tipCount = total - 2;
+  let tipNo = 0;
+  let sawFirstSlide = false;
+  const slides = style.format.map((slot, i): Slide => {
+    const own = style.slides.filter((x) => x.slotId === slot.id);
+    const first = slot.kind === "slide" && !sawFirstSlide;
+    if (slot.kind === "slide") sawFirstSlide = true;
+    // Always draw the fallback so one position's pictures can't shift the random choices of the next.
+    const fallbackText = slot.kind === "cta" ? pick(rand, CTAS) : first ? hook.text : `${++tipNo}. ${tips[tipNo - 1] ?? ""}`;
+    if (own.length) {
+      const chosen = pick(rand, own);
+      return { kind: slot.kind, label: labels[i], text: chosen.text, image: photoSource(chosen.url) };
+    }
+    return { kind: slot.kind, label: labels[i], text: fallbackText, image: fallbackImages[i] };
+  });
 
-  const own = shuffle(rand, texts(style, "tip"));
-  const topical = shuffle(rand, TIPS.filter((t) => t.topic === topic).map((t) => t.text));
-  const rest = shuffle(rand, TIPS.filter((t) => t.topic !== topic).map((t) => t.text));
-  const tips = [...own, ...topical, ...rest].slice(0, tipCount);
-
-  const ownCtas = texts(style, "cta");
-  const photos = style.items.filter((i) => i.type === "photo" && i.url).map(photoSource);
-  const images = imagePool(rand, total, photos);
-  const slides: Slide[] = [
-    { kind: "hook", text: hookText, image: images[0] },
-    ...tips.map((t, i): Slide => ({ kind: "tip", text: `${i + 1}. ${t}`, image: images[i + 1] })),
-    { kind: "cta", text: pick(rand, ownCtas.length ? ownCtas : CTAS), image: images[total - 1] },
-  ];
-
-  return { seed, opts, persona, topic, sound: pick(rand, SOUNDS), caption: pickCaption(rand, topic), slides };
+  return { seed, opts, persona: hook.persona, topic: hook.topic, sound: pick(rand, SOUNDS), caption: pickCaption(rand, hook.topic), slides };
 }
 
 /** A caption for the topic. Pass `not` to get a different one when shuffling. */

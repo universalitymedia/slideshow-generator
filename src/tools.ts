@@ -16,7 +16,7 @@ export const TOOLS: Tool[] = [
   {
     id: "slideshow-generator",
     title: "Liftly Slideshow Generator",
-    description: "Generate a 6 to 8 slide TikTok slideshow from the hook, tip and CTA pools, with copy-ready text and a sound.",
+    description: "Generate a TikTok slideshow from a style's pictures, with copy-ready text for every slide, a caption and a sound.",
     platform: "TikTok",
     path: "/tiktok/slideshow-generator",
     iconSrc: liftly,

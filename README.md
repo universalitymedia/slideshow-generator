@@ -24,11 +24,16 @@ For trying the UI without Discord, set `DEV_LOGIN=true`: the login page gets "De
 
 ## Admin dashboard
 
-Admins get an **Admin > Styles** page in the sidebar. For each style they can edit:
+Admins get an **Admin > Styles** page in the sidebar. A style is made of:
 
-- **Basics and look:** name, description, text style, text position and a photo filter (sliders).
-- **Preview:** the sample text and sample photo shown on the style's card in the generator, with a live preview while editing.
-- **Items:** the style's own photos (uploaded), hooks, tips and CTAs. When a style has any of a type, generating with it uses those; otherwise the built-in pool is used. Its own tips come first and built-in tips fill any gap.
+- **Basics:** a name and description.
+- **Preview pictures:** uploaded pictures shown on the style's card in the generator. The starred one is the main picture.
+- **Format:** the order of the slideshow, for example `Slide 1, Slide 2, Slide 3, CTA, Slide 4, Slide 5`. Add slides and CTAs, move them and remove them.
+- **Slides:** for each position in the format, upload pictures and write the text creators copy for each one. Generating picks one picture per position at random.
+
+A position with no uploaded pictures falls back to a built-in picture and built-in text, so a new style still produces a full slideshow.
+
+Creators see each picture with its text and a **Copy text** button, can download every picture as uploaded, and get a caption and a sound.
 
 Styles and uploads are stored in `./data` (`DATA_DIR`): `db.json` plus `uploads/`. Back that folder up and keep it on a persistent disk.
 
@@ -36,6 +41,6 @@ Styles and uploads are stored in `./data` (`DATA_DIR`): `db.json` plus `uploads/
 
 Pick who is telling the story, a topic and a slide count (6 to 8, or random), then generate. You get a hook, tips and a CTA as slides, a suggested sound, per-slide copy and image download, and "Download all images" (a zip of PNGs plus `captions.txt`).
 
-- **Built-in content:** `src/slideshow/content.ts` (hooks, tips, CTAs, captions, sounds, personas, topics). Styles can add their own items in the admin dashboard.
+- **Built-in content:** `src/slideshow/content.ts` (hooks, tips, CTAs, captions, sounds, personas, topics). Used for positions a style has no pictures for, and for captions.
 - **Photos:** drop `.jpg/.png/.webp` files into `src/assets/photos/`. They're cropped to 1080×1920 and used instead of the placeholder scenes. Text is a preview overlay only; downloaded images have none.
 - **Adding a tool:** add an entry to `src/tools.ts` and a route in `src/App.tsx`.

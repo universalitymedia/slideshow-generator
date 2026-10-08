@@ -1,18 +1,18 @@
-import { ArrowLeft, Check, Save, Trash2, Undo2 } from "lucide-react";
+import { ArrowLeft, Check, Save, Star, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
-import { FilterEditor } from "../components/FilterEditor";
-import { ItemsEditor } from "../components/ItemsEditor";
-import { SlidePreview } from "../components/SlidePreview";
+import { FormatEditor } from "../components/FormatEditor";
+import { PreviewStack } from "../components/PreviewStack";
+import { Uploader } from "../components/Uploader";
 import { go, href } from "../router";
-import { previewImage } from "../slideshow/styleUtils";
-import { TEXT_LOOKS, TEXT_POSITIONS, type SlideStyle } from "../slideshow/styles";
+import { MAX_PREVIEWS, type SlideStyle } from "../slideshow/styles";
 
 export function StyleEditor({ id }: { id: string }) {
   const [saved, setSaved] = useState<SlideStyle | null>(null);
   const [draft, setDraft] = useState<SlideStyle | null>(null);
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState("");
+  const [uploadError, setUploadError] = useState("");
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
 
@@ -57,7 +57,7 @@ export function StyleEditor({ id }: { id: string }) {
   }
 
   async function remove() {
-    if (!window.confirm(`Delete "${saved!.name}"? Its photos and text items are deleted too.`)) return;
+    if (!window.confirm(`Delete "${saved!.name}"? Its pictures are deleted too.`)) return;
     try {
       await api.deleteStyle(id);
       go("/admin");
@@ -66,8 +66,7 @@ export function StyleEditor({ id }: { id: string }) {
     }
   }
 
-  const photos = draft.items.filter((i) => i.type === "photo");
-  const image = previewImage(draft);
+  const makeMain = (url: string) => patch({ previews: [url, ...draft.previews.filter((u) => u !== url)] });
 
   return (
     <div className="page wide">
@@ -99,71 +98,43 @@ export function StyleEditor({ id }: { id: string }) {
           </section>
 
           <section className="card panel">
-            <h2>Look</h2>
-            <div className="field">
-              <span>Text style</span>
-              <div className="segmented" role="group" aria-label="Text style">
-                {TEXT_LOOKS.map((l) => (
-                  <button key={l.id} className={draft.text === l.id ? "on" : ""} onClick={() => patch({ text: l.id })}>{l.label}</button>
-                ))}
-              </div>
-            </div>
-            <div className="field">
-              <span>Text position</span>
-              <div className="segmented" role="group" aria-label="Text position">
-                {TEXT_POSITIONS.map((p) => (
-                  <button key={p} className={draft.position === p ? "on" : ""} onClick={() => patch({ position: p })}>{p[0].toUpperCase() + p.slice(1)}</button>
-                ))}
-              </div>
-            </div>
-            <div className="field">
-              <span>Photo filter</span>
-              <FilterEditor value={draft.filter} onChange={(filter) => patch({ filter })} />
-              <p className="muted small">The filter is also applied to the images creators download. The text look is a preview only.</p>
-            </div>
-          </section>
-
-          <section className="card panel">
-            <h2>Preview</h2>
-            <p className="muted small">What creators see on this style's card before they generate.</p>
-            <label className="field">
-              <span>Sample text</span>
-              <input value={draft.previewText} maxLength={200} onChange={(e) => patch({ previewText: e.target.value })} />
-            </label>
-            <div className="field">
-              <span>Sample photo</span>
-              {photos.length ? (
-                <div className="photo-pick">
-                  {photos.map((p) => {
-                    const on = (draft.previewItemId ?? photos[0].id) === p.id;
-                    return (
-                      <button key={p.id} className={on ? "on" : ""} onClick={() => patch({ previewItemId: p.id })} aria-pressed={on} aria-label="Use this photo for the preview">
-                        <img src={p.url} alt="" />
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="muted small">Add photos under Items to pick one. Until then the built-in sample is used.</p>
-              )}
+            <h2>Preview pictures</h2>
+            <p className="muted small">What creators see on this style's card before they generate. The starred picture is the main one.</p>
+            {uploadError && <p className="auth-error" role="alert">{uploadError}</p>}
+            <div className="photo-grid">
+              {draft.previews.map((url, i) => (
+                <figure key={url} className={i === 0 ? "on" : ""}>
+                  <img src={url} alt="" loading="lazy" />
+                  <figcaption>
+                    <button className="icon-btn sm" title="Make this the main picture" aria-label="Make this the main picture" onClick={() => makeMain(url)}>
+                      <Star size={15} fill={i === 0 ? "currentColor" : "none"} />
+                    </button>
+                    <button className="icon-btn sm" title="Remove" aria-label="Remove preview picture" onClick={() => patch({ previews: draft.previews.filter((u) => u !== url) })}>
+                      <Trash2 size={15} />
+                    </button>
+                  </figcaption>
+                </figure>
+              ))}
+              <Uploader
+                label="Add previews"
+                max={MAX_PREVIEWS - draft.previews.length}
+                onError={setUploadError}
+                onUploaded={(urls) => { setUploadError(""); patch({ previews: [...draft.previews, ...urls] }); }}
+              />
             </div>
           </section>
 
           <section className="card panel">
-            <h2>Items</h2>
-            <ItemsEditor style={draft} onChange={patch} />
+            <h2>Format and slides</h2>
+            <FormatEditor style={draft} onChange={patch} />
           </section>
         </div>
 
         <aside className="editor-side">
           <div className="card side-card">
-            <span className="muted small">Live preview</span>
-            <SlidePreview image={image} text={draft.previewText} style={draft} />
-          </div>
-          <div className="card side-card">
             <span className="muted small">In the generator</span>
             <div className="style-card on static">
-              <SlidePreview image={image} text={draft.previewText} style={draft} small />
+              <PreviewStack urls={draft.previews} />
               <span className="style-name">{draft.name}<Check size={14} /></span>
               {draft.blurb && <span className="muted small">{draft.blurb}</span>}
             </div>

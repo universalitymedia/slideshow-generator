@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { existsSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
-import { NEW_STYLE } from "../src/slideshow/styles.ts";
+import { newStyleDefaults } from "../src/slideshow/styles.ts";
 import { config, discordConfigured, redirectUri } from "./config.ts";
 import { getStyle, listStyles, newId, removeStyle, saveStyle, uploadsDir } from "./db.ts";
 import { HttpError, imageExtension, parseStyle } from "./validate.ts";
@@ -140,7 +140,7 @@ app.get("/api/styles", requireUser, (_req, res) => {
 });
 
 app.post("/api/admin/styles", requireAdmin, express.json({ limit: "1mb" }), (req, res) => {
-  const style = parseStyle({ ...NEW_STYLE, ...(req.body ?? {}) }, newId());
+  const style = parseStyle({ ...newStyleDefaults(), ...(req.body ?? {}) }, newId());
   saveStyle(style);
   res.status(201).json({ style });
 });

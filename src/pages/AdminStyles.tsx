@@ -1,9 +1,8 @@
 import { Pencil, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { SlidePreview } from "../components/SlidePreview";
+import { PreviewStack } from "../components/PreviewStack";
 import { go, href } from "../router";
-import { itemsOf, previewImage } from "../slideshow/styleUtils";
 import type { SlideStyle } from "../slideshow/styles";
 
 const count = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
@@ -46,12 +45,12 @@ export function AdminStyles() {
       <div className="admin-grid">
         {styles?.map((s) => (
           <a key={s.id} className="card admin-style" href={href(`/admin/styles/${s.id}`)}>
-            <SlidePreview image={previewImage(s)} text={s.previewText} style={s} small />
+            <PreviewStack urls={s.previews} />
             <div className="admin-style-body">
               <strong>{s.name}</strong>
               {s.blurb && <p className="muted small">{s.blurb}</p>}
               <p className="muted small">
-                {count(itemsOf(s, "photo").length, "photo")} · {count(itemsOf(s, "hook").length, "hook")} · {count(itemsOf(s, "tip").length, "tip")} · {count(itemsOf(s, "cta").length, "CTA")}
+                {count(s.format.length, "position")} · {count(s.slides.length, "picture")}
               </p>
             </div>
             <span className="btn outline sm"><Pencil size={14} /> Edit</span>
