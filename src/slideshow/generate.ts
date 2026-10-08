@@ -1,4 +1,4 @@
-import { CAPTIONS, CTAS, HASHTAGS, HOOKS, PERSONAS, SOUNDS, TIPS, TOPICS, type Caption, type PersonaId, type Sound, type TopicId } from "./content";
+import { CAPTIONS, CTAS, HASHTAGS, HOOKS, PERSONAS, SOUNDS, TIPS, TOPICS, type PersonaId, type Sound, type TopicId } from "./content";
 import { mulberry32, pick, shuffle, type Rand } from "./rng";
 import { imagePool, type ImageSource } from "./images";
 import { photoSource } from "./styleUtils";
@@ -9,6 +9,12 @@ export interface Slide {
   label: string; // "Slide 2", "CTA"
   text: string; // what the creator copies for this picture
   image: ImageSource;
+}
+
+/** What creators paste into TikTok: the bold title and the description (hashtags included). */
+export interface PostCaption {
+  title: string;
+  description: string;
 }
 
 export interface Options {
@@ -22,7 +28,7 @@ export interface Slideshow {
   persona: PersonaId;
   topic: TopicId;
   sound: Sound;
-  caption: Caption;
+  caption: PostCaption;
   slides: Slide[];
 }
 
@@ -69,17 +75,19 @@ export function generate(seed: number, opts: Options, style: SlideStyle): Slides
     return { kind: slot.kind, label: labels[i], text: fallbackText, image: fallbackImages[i] };
   });
 
-  return { seed, opts, persona: hook.persona, topic: hook.topic, sound: pick(rand, SOUNDS), caption: pickCaption(rand, hook.topic), slides };
+  return { seed, opts, persona: hook.persona, topic: hook.topic, sound: style.sounds.length ? pick(rand, style.sounds) : pick(rand, SOUNDS), caption: pickCaption(rand, style, hook.topic), slides };
 }
 
-/** A caption for the topic. Pass `not` to get a different one when shuffling. */
-export function pickCaption(rand: Rand, topic: TopicId, not?: Caption): Caption {
-  const options = CAPTIONS.filter((c) => c.topic === topic && c !== not);
-  return pick(rand, options);
+/** A caption from the style, or a built-in one for the topic when the style has none. Pass `not` to get a different one. */
+export function pickCaption(rand: Rand, style: SlideStyle, topic: TopicId, not?: PostCaption): PostCaption {
+  const own = style.captions.map((c): PostCaption => ({ title: c.title, description: c.text }));
+  const pool = own.length
+    ? own
+    : CAPTIONS.filter((c) => c.topic === topic).map((c): PostCaption => ({ title: c.title, description: `${c.text} ${HASHTAGS[c.topic].join(" ")}` }));
+  const others = pool.filter((c) => !not || c.title !== not.title || c.description !== not.description);
+  return pick(rand, others.length ? others : pool);
 }
-
-export const captionDescription = (c: Caption) => `${c.text} ${HASHTAGS[c.topic].join(" ")}`;
 
 export const personaLabel = (id: PersonaId) => PERSONAS.find((p) => p.id === id)!.label;
 export const topicLabel = (id: TopicId) => TOPICS.find((t) => t.id === id)!.label;
-export const soundUrl = (s: Sound) => `https://www.tiktok.com/search?q=${encodeURIComponent(`${s.title} ${s.artist}`)}`;
+export const soundUrl = (s: Sound) => s.url ?? `https://www.tiktok.com/search?q=${encodeURIComponent(`${s.title} ${s.artist}`.trim())}`;

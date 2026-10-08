@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, GripVertical, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { slidesIn } from "../slideshow/styleUtils";
 import { MAX_PICTURES_PER_SLOT, MAX_SLOTS, slotLabels, type SlideStyle, type SlotKind } from "../slideshow/styles";
@@ -15,6 +15,8 @@ export function FormatEditor({ style, onChange }: { style: SlideStyle; onChange:
   const labels = slotLabels(format);
   const [selected, setSelected] = useState(format[0]?.id);
   const [error, setError] = useState("");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
 
   const index = Math.max(0, format.findIndex((f) => f.id === selected));
   const slot = format[index];
@@ -26,13 +28,18 @@ export function FormatEditor({ style, onChange }: { style: SlideStyle; onChange:
     setSelected(next.id);
   }
 
-  function move(by: -1 | 1) {
-    const to = index + by;
-    if (to < 0 || to >= format.length) return;
+  /** Move the position `fromId` to where `toId` is. Used by both drag and drop and the arrow buttons. */
+  function reorder(fromId: string, toId: string) {
+    const from = format.findIndex((f) => f.id === fromId);
+    const to = format.findIndex((f) => f.id === toId);
+    if (from < 0 || to < 0 || from === to) return;
     const next = [...format];
-    [next[index], next[to]] = [next[to], next[index]];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
     onChange({ format: next });
   }
+
+  const move = (by: -1 | 1) => format[index + by] && reorder(slot.id, format[index + by].id);
 
   function remove() {
     if (format.length <= 1) return;
@@ -46,12 +53,24 @@ export function FormatEditor({ style, onChange }: { style: SlideStyle; onChange:
 
   return (
     <div>
-      <p className="muted small tab-help">The order creators get. Add as many slides and CTAs as you like, in any order, then pick a position to upload its pictures.</p>
+      <p className="muted small tab-help">The order creators get. Drag a position to move it, or select one and use the arrows. Add as many slides and CTAs as you like, then pick a position to upload its pictures.</p>
 
       <div className="format" role="tablist" aria-label="Format">
         {format.map((f, i) => (
-          <button key={f.id} role="tab" aria-selected={f.id === slot?.id} className={`slot ${f.kind} ${f.id === slot?.id ? "on" : ""}`} onClick={() => { setSelected(f.id); setError(""); }}>
-            {labels[i]}
+          <button
+            key={f.id}
+            role="tab"
+            draggable
+            aria-selected={f.id === slot?.id}
+            className={`slot kind-${f.kind} ${f.id === slot?.id ? "on" : ""} ${dragId === f.id ? "dragging" : ""} ${overId === f.id && dragId !== f.id ? "over" : ""}`}
+            onClick={() => { setSelected(f.id); setError(""); }}
+            onDragStart={(e) => { setDragId(f.id); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", f.id); }}
+            onDragOver={(e) => { if (dragId) { e.preventDefault(); setOverId(f.id); } }}
+            onDrop={(e) => { e.preventDefault(); if (dragId) reorder(dragId, f.id); setDragId(null); setOverId(null); }}
+            onDragEnd={() => { setDragId(null); setOverId(null); }}
+          >
+            <GripVertical size={14} className="grip" aria-hidden="true" />
+            <span className="slot-label">{labels[i]}</span>
             <span className="count">{slidesIn(style, f.id).length}</span>
           </button>
         ))}
@@ -64,8 +83,8 @@ export function FormatEditor({ style, onChange }: { style: SlideStyle; onChange:
           <div className="slot-head">
             <h3>{labels[index]}</h3>
             <div className="row">
-              <button className="icon-btn sm dark" onClick={() => move(-1)} disabled={index === 0} aria-label="Move earlier" title="Move earlier"><ArrowLeft size={16} /></button>
-              <button className="icon-btn sm dark" onClick={() => move(1)} disabled={index === format.length - 1} aria-label="Move later" title="Move later"><ArrowRight size={16} /></button>
+              <button className="btn outline sm" onClick={() => move(-1)} disabled={index === 0} aria-label="Move earlier"><ArrowLeft size={14} /> Earlier</button>
+              <button className="btn outline sm" onClick={() => move(1)} disabled={index === format.length - 1} aria-label="Move later">Later <ArrowRight size={14} /></button>
               <button className="icon-btn sm dark" onClick={remove} disabled={format.length <= 1} aria-label="Remove this position" title="Remove this position"><Trash2 size={16} /></button>
             </div>
           </div>

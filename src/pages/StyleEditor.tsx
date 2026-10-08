@@ -1,8 +1,10 @@
 import { ArrowLeft, Check, Save, Star, Trash2, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
+import { CaptionsEditor } from "../components/CaptionsEditor";
 import { FormatEditor } from "../components/FormatEditor";
 import { PreviewStack } from "../components/PreviewStack";
+import { SoundsEditor } from "../components/SoundsEditor";
 import { Uploader } from "../components/Uploader";
 import { go, href } from "../router";
 import { MAX_PREVIEWS, type SlideStyle } from "../slideshow/styles";
@@ -127,6 +129,16 @@ export function StyleEditor({ id }: { id: string }) {
           <section className="card panel">
             <h2>Format and slides</h2>
             <FormatEditor style={draft} onChange={patch} />
+          </section>
+
+          <section className="card panel">
+            <h2>Captions</h2>
+            <CaptionsEditor style={draft} onChange={patch} />
+          </section>
+
+          <section className="card panel">
+            <h2>Music</h2>
+            <SoundsEditor style={draft} onChange={patch} />
           </section>
         </div>
 

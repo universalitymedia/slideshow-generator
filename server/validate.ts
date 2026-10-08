@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { MAX_PICTURES_PER_SLOT, MAX_PREVIEWS, MAX_SLOTS, type FormatSlot, type SlideStyle, type StyleSlide } from "../src/slideshow/styles.ts";
+import {
+  MAX_CAPTIONS, MAX_PICTURES_PER_SLOT, MAX_PREVIEWS, MAX_SLOTS, MAX_SOUNDS,
+  type FormatSlot, type SlideStyle, type StyleCaption, type StyleSlide, type StyleSound,
+} from "../src/slideshow/styles.ts";
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -61,6 +64,48 @@ function parseSlides(raw: unknown, format: FormatSlot[]): StyleSlide[] {
   return out;
 }
 
+const obj = (r: unknown) => (r && typeof r === "object" ? r : {}) as Record<string, unknown>;
+
+/** Rows left completely empty in the editor are dropped instead of rejected. */
+function parseCaptions(raw: unknown): StyleCaption[] {
+  if (!Array.isArray(raw)) return bad("captions must be a list");
+  if (raw.length > MAX_CAPTIONS) return bad(`A style can have at most ${MAX_CAPTIONS} captions`);
+  const seen = new Set<string>();
+  return raw.flatMap((r) => {
+    const o = obj(r);
+    const title = str(o.title, "Caption title", 100);
+    const text = str(o.text, "Caption description", 2000);
+    if (!title && !text) return [];
+    if (!text) bad("Every caption needs a description");
+    return [{ id: uniqueId(o.id, seen), title, text }];
+  });
+}
+
+function parseSounds(raw: unknown): StyleSound[] {
+  if (!Array.isArray(raw)) return bad("sounds must be a list");
+  if (raw.length > MAX_SOUNDS) return bad(`A style can have at most ${MAX_SOUNDS} sounds`);
+  const seen = new Set<string>();
+  return raw.flatMap((r) => {
+    const o = obj(r);
+    const title = str(o.title, "Sound title", 120);
+    const artist = str(o.artist, "Artist", 120);
+    const link = str(o.url, "Sound link", 300);
+    if (!title && !artist && !link) return [];
+    if (!title) bad("Every sound needs a title");
+    let url: string | undefined;
+    if (link) {
+      try {
+        const u = new URL(link);
+        if (u.protocol !== "https:") throw new Error();
+        url = u.href;
+      } catch {
+        bad(`"${link}" is not a valid https link`);
+      }
+    }
+    return [{ id: uniqueId(o.id, seen), title, artist, ...(url ? { url } : {}) }];
+  });
+}
+
 export function parseStyle(body: unknown, id: string): SlideStyle {
   if (!body || typeof body !== "object") return bad("Invalid style");
   const b = body as Record<string, unknown>;
@@ -74,6 +119,8 @@ export function parseStyle(body: unknown, id: string): SlideStyle {
     previews: (b.previews as unknown[]).map(upload),
     format,
     slides: parseSlides(b.slides, format),
+    captions: parseCaptions(b.captions ?? []),
+    sounds: parseSounds(b.sounds ?? []),
   };
 }
 

@@ -1,8 +1,6 @@
 import { Check, Copy, RefreshCw, Send } from "lucide-react";
 import { useState } from "react";
-import { HASHTAGS } from "../slideshow/content";
-import type { Caption } from "../slideshow/content";
-import { captionDescription } from "../slideshow/generate";
+import type { PostCaption } from "../slideshow/generate";
 
 function Block({ label, hint, count, button, value, children }: {
   label: string;
@@ -31,8 +29,13 @@ function Block({ label, hint, count, button, value, children }: {
   );
 }
 
-export function CaptionCard({ caption, onShuffle }: { caption: Caption; onShuffle: () => void }) {
-  const description = captionDescription(caption);
+/** Hashtags in the description are shown muted. */
+function withMutedHashtags(text: string) {
+  return text.split(/(#[\p{L}\p{N}_]+)/u).map((part, i) => (i % 2 ? <span key={i} className="muted">{part}</span> : part));
+}
+
+export function CaptionCard({ caption, onShuffle }: { caption: PostCaption; onShuffle: () => void }) {
+  const description = caption.description;
   return (
     <section className="card caption">
       <div className="caption-head">
@@ -48,7 +51,7 @@ export function CaptionCard({ caption, onShuffle }: { caption: Caption; onShuffl
         {caption.title}
       </Block>
       <Block label="DESCRIPTION" hint="the text under it, hashtags included" count={description.length} button="Copy description" value={description}>
-        {caption.text} <span className="muted">{HASHTAGS[caption.topic].join(" ")}</span>
+        {withMutedHashtags(description)}
       </Block>
     </section>
   );

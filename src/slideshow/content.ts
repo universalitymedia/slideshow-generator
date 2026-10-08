@@ -106,6 +106,7 @@ export const CTAS: string[] = [
 export interface Sound {
   title: string;
   artist: string;
+  url?: string; // link to the exact sound, if known
 }
 
 export const SOUNDS: Sound[] = [

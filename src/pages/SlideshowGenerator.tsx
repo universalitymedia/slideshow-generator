@@ -5,17 +5,16 @@ import { api } from "../api";
 import { CaptionCard } from "../components/CaptionCard";
 import { StylePicker } from "../components/StylePicker";
 import { SlideCard } from "../components/SlideCard";
-import type { Caption, PersonaId, TopicId } from "../slideshow/content";
+import type { PersonaId, TopicId } from "../slideshow/content";
 import type { SlideStyle } from "../slideshow/styles";
 import {
   generate,
-  personaLabel,
   pickCaption,
   personasFor,
   soundUrl,
-  topicLabel,
   topicsFor,
   type Options,
+  type PostCaption,
 } from "../slideshow/generate";
 import { imageFile } from "../slideshow/images";
 import { newSeed } from "../slideshow/rng";
@@ -39,7 +38,7 @@ export function SlideshowGenerator() {
   const [opts, setOpts] = useState<Options>({ persona: "any", topic: "any" });
   // What the last click on Generate used. Changing the style afterwards builds the same slideshow from the new style.
   const [params, setParams] = useState<{ seed: number; opts: Options } | null>(null);
-  const [captionPick, setCaptionPick] = useState<{ key: string; caption: Caption } | null>(null);
+  const [captionPick, setCaptionPick] = useState<{ key: string; caption: PostCaption } | null>(null);
   const [busy, setBusy] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
 
@@ -151,8 +150,6 @@ export function SlideshowGenerator() {
           </section>
 
           <section className="result-head">
-            <span className="chip solid">{personaLabel(show.persona)}</span>
-            <span className="chip">{topicLabel(show.topic)}</span>
             <span className="muted small">
               {show.slides.length} slides · #{seedId(show.seed)} ·{" "}
               {usesBuiltIn ? "Some positions have no uploaded picture yet, so they use built-in ones." : "Copy the text for each picture, then add it in TikTok."}
@@ -181,7 +178,7 @@ export function SlideshowGenerator() {
 
           <CaptionCard
             caption={show.caption}
-            onShuffle={() => setCaptionPick({ key: `${show.seed}-${show.topic}`, caption: pickCaption(Math.random, show.topic, show.caption) })}
+            onShuffle={() => setCaptionPick({ key: `${show.seed}-${show.topic}`, caption: pickCaption(Math.random, style!, show.topic, show.caption) })}
           />
         </>
       )}

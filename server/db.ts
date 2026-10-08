@@ -19,9 +19,13 @@ function load(): Db {
     const raw = JSON.parse(readFileSync(dbFile, "utf8")) as { styles: Partial<SlideStyle>[] };
     let changed = false;
     const styles = raw.styles.map((s) => {
-      if (Array.isArray(s.format)) return s as SlideStyle;
+      if (Array.isArray(s.format)) {
+        if (s.captions && s.sounds) return s as SlideStyle;
+        changed = true;
+        return { ...s, captions: s.captions ?? [], sounds: s.sounds ?? [] } as SlideStyle;
+      }
       changed = true;
-      return { id: s.id!, name: s.name ?? "Style", blurb: s.blurb ?? "", previews: [], format: defaultFormat(), slides: [] } satisfies SlideStyle;
+      return { id: s.id!, name: s.name ?? "Style", blurb: s.blurb ?? "", previews: [], format: defaultFormat(), slides: [], captions: [], sounds: [] } satisfies SlideStyle;
     });
     const db: Db = { styles };
     if (changed) persist(db);

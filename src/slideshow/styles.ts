@@ -16,6 +16,21 @@ export interface StyleSlide {
   text: string;
 }
 
+/** A caption creators paste into TikTok. `text` is the whole description, hashtags included. */
+export interface StyleCaption {
+  id: string;
+  title: string;
+  text: string;
+}
+
+/** A sound creators use. `url` is an optional link to the exact sound, otherwise creators get a TikTok search. */
+export interface StyleSound {
+  id: string;
+  title: string;
+  artist: string;
+  url?: string;
+}
+
 export interface SlideStyle {
   id: string;
   name: string;
@@ -23,8 +38,12 @@ export interface SlideStyle {
   previews: string[]; // uploaded preview pictures, the first is the main one
   format: FormatSlot[];
   slides: StyleSlide[];
+  captions: StyleCaption[];
+  sounds: StyleSound[];
 }
 
+export const MAX_CAPTIONS = 30;
+export const MAX_SOUNDS = 30;
 export const MAX_SLOTS = 15;
 export const MAX_PREVIEWS = 6;
 export const MAX_PICTURES_PER_SLOT = 50;
@@ -50,8 +69,10 @@ export const newStyleDefaults = (): Omit<SlideStyle, "id"> => ({
   previews: [],
   format: defaultFormat(),
   slides: [],
+  captions: [],
+  sounds: [],
 });
 
 export const SEED_STYLES: SlideStyle[] = [
-  { id: "default", name: "Default", blurb: "Built-in photos and text", previews: [], format: defaultFormat(), slides: [] },
+  { id: "default", name: "Default", blurb: "Built-in photos and text", previews: [], format: defaultFormat(), slides: [], captions: [], sounds: [] },
 ];

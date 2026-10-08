@@ -50,7 +50,7 @@ export function AdminStyles() {
               <strong>{s.name}</strong>
               {s.blurb && <p className="muted small">{s.blurb}</p>}
               <p className="muted small">
-                {count(s.format.length, "position")} · {count(s.slides.length, "picture")}
+                {count(s.format.length, "position")} · {count(s.slides.length, "picture")} · {count(s.captions.length, "caption")} · {count(s.sounds.length, "sound")}
               </p>
             </div>
             <span className="btn outline sm"><Pencil size={14} /> Edit</span>
