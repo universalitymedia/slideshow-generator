@@ -16,7 +16,7 @@ export function App() {
   const tool = TOOLS.find((t) => t.path === route);
 
   useEffect(() => {
-    document.title = tool ? `${tool.title} · Universality Tool's` : "Universality Tool's";
+    document.title = tool ? `${tool.title} · Universality Tools` : "Universality Tools";
   }, [tool]);
 
   if (loading) return <div className="auth-page"><span className="spinner" aria-label="Loading" /></div>;

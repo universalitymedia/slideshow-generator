@@ -26,8 +26,8 @@ export function Login() {
   return (
     <main className="auth-page">
       <div className="auth-brand">
-        <img className="logo lg" src={logo} alt="" />
-        <h1>Universality Tool's</h1>
+        <img className="logo lg" src={logo} alt="Universality Tools logo" />
+        <h1>Universality Tools</h1>
         <p className="muted">Creator login. Sign in with Discord to open your tools.</p>
       </div>
 

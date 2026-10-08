@@ -4,31 +4,41 @@ import { join, resolve } from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { newStyleDefaults } from "../src/slideshow/styles.ts";
 import { config, discordConfigured, redirectUri } from "./config.ts";
-import { getLibrary, getStyle, listStyles, newId, removeStyle, saveLibrary, saveStyle, uploadsDir } from "./db.ts";
+import { createStyle, getLibrary, getStyle, listStyles, newId, removeStyle, saveLibrary, saveStyle, uploadsDir } from "./db.ts";
 import { HttpError, imageExtension, parseLibrary, parseStyle } from "./validate.ts";
-import { parseCookies, sign, verify, SESSION_MAX_AGE_MS, type SessionUser } from "./session.ts";
+import { directAccess, sameSiteRequest, stillAllowed, type Policy } from "./access.ts";
+import { parseCookies, sessionMaxAgeMs, sign, verify, type SessionUser } from "./session.ts";
 
 const app = express();
 app.disable("x-powered-by");
 const secure = config.publicUrl.startsWith("https://");
 
 const isAdmin = (u: SessionUser) => config.adminIds.includes(u.id);
-const restricted = config.allowedIds.length > 0 || Boolean(config.discord.guildId);
+const policy: Policy = { ...config, guildId: config.discord.guildId };
 
 function setCookie(res: Response, name: string, value: string, maxAgeMs: number) {
   res.append("Set-Cookie", `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(maxAgeMs / 1000)}${secure ? "; Secure" : ""}`);
 }
 
-// Browsers send Origin on cross-site POSTs. Reject any state-changing request that isn't from our own site.
+// Reject any state-changing request that can't be shown to come from our own site.
+const ownOrigin = new URL(config.publicUrl).origin;
 app.use((req, res, next) => {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
-  const origin = req.headers.origin;
-  if (origin && origin !== new URL(config.publicUrl).origin) return void res.status(403).json({ error: "Cross-site request blocked" });
+  if (!sameSiteRequest({ origin: req.headers.origin, "sec-fetch-site": req.headers["sec-fetch-site"] as string | undefined }, ownOrigin)) {
+    return void res.status(403).json({ error: "Cross-site request blocked" });
+  }
   next();
 });
 
 app.use((req, res, next) => {
-  res.locals.user = verify(parseCookies(req.headers.cookie).session);
+  const user = verify(parseCookies(req.headers.cookie).session);
+  // A session for someone who has since lost access is dropped right away, not left to run out.
+  if (user && !stillAllowed(user, policy)) {
+    setCookie(res, "session", "", 0);
+    res.locals.user = null;
+  } else {
+    res.locals.user = user;
+  }
   next();
 });
 
@@ -45,7 +55,7 @@ app.get("/api/config", (_req, res) => {
 
 app.get("/api/me", (_req, res) => {
   const u = res.locals.user as SessionUser | null;
-  res.json({ user: u ? { ...u, isAdmin: isAdmin(u) } : null });
+  res.json({ user: u ? { id: u.id, name: u.name, avatar: u.avatar, isAdmin: isAdmin(u) } : null });
 });
 
 app.get("/auth/discord", (_req, res) => {
@@ -58,7 +68,7 @@ app.get("/auth/discord", (_req, res) => {
     response_type: "code",
     scope: config.discord.guildId ? "identify guilds" : "identify",
     state,
-    prompt: "none",
+    // No prompt parameter: Discord shows the consent screen the first time and skips it once the app is authorized.
   });
   res.redirect(`https://discord.com/oauth2/authorize?${q}`);
 });
@@ -70,7 +80,7 @@ app.get("/auth/discord/callback", async (req, res) => {
   };
   const { code, state, error } = req.query as Record<string, string | undefined>;
   const expected = parseCookies(req.headers.cookie).oauth_state;
-  if (error) return fail("denied");
+  if (error) return fail(error === "access_denied" ? "denied" : "failed");
   if (!code || !state || !expected || state !== expected) return fail("state");
 
   try {
@@ -94,7 +104,7 @@ app.get("/auth/discord/callback", async (req, res) => {
     };
     if (!me.id) return fail("profile");
 
-    const user: SessionUser = {
+    const base = {
       id: me.id,
       name: me.global_name || me.username,
       avatar: me.avatar
@@ -102,15 +112,17 @@ app.get("/auth/discord/callback", async (req, res) => {
         : `https://cdn.discordapp.com/embed/avatars/${Number((BigInt(me.id) >> 22n) % 6n)}.png`,
     };
 
-    let allowed = !restricted || isAdmin(user) || config.allowedIds.includes(user.id);
-    if (!allowed && config.discord.guildId) {
-      const guilds = (await (await fetch("https://discord.com/api/users/@me/guilds", { headers: auth })).json()) as { id: string }[];
-      allowed = Array.isArray(guilds) && guilds.some((g) => g.id === config.discord.guildId);
+    let via = directAccess(me.id, policy);
+    if (!via && config.discord.guildId && !config.deniedIds.includes(me.id)) {
+      const guildsRes = await fetch("https://discord.com/api/users/@me/guilds", { headers: auth });
+      const guilds = guildsRes.ok ? ((await guildsRes.json()) as { id: string }[]) : [];
+      if (Array.isArray(guilds) && guilds.some((g) => g.id === config.discord.guildId)) via = "guild";
     }
-    if (!allowed) return fail("not_allowed");
+    if (!via) return fail("not_allowed");
+    const user: SessionUser = { ...base, via };
 
     setCookie(res, "oauth_state", "", 0);
-    setCookie(res, "session", sign(user), SESSION_MAX_AGE_MS);
+    setCookie(res, "session", sign(user), sessionMaxAgeMs(via));
     res.redirect("/");
   } catch (e) {
     console.error("Discord login failed", e);
@@ -123,7 +135,7 @@ if (config.devLogin) {
   app.get("/auth/dev", (req, res) => {
     const admin = req.query.admin === "1";
     const id = admin ? (config.adminIds[0] ?? "0") : "1";
-    setCookie(res, "session", sign({ id, name: admin ? "Dev Admin" : "Dev Creator", avatar: "" }), SESSION_MAX_AGE_MS);
+    setCookie(res, "session", sign({ id, name: admin ? "Dev Admin" : "Dev Creator", avatar: "", via: "dev" }), sessionMaxAgeMs("dev"));
     res.redirect("/");
   });
 }
@@ -144,22 +156,19 @@ app.get("/api/library", requireUser, (_req, res) => {
 });
 
 app.put("/api/admin/library", requireAdmin, express.json({ limit: "1mb" }), (req, res) => {
-  const library = parseLibrary(req.body);
-  saveLibrary(library);
+  const library = saveLibrary(parseLibrary(req.body), req.body?.rev);
   res.json({ library });
 });
 
 app.post("/api/admin/styles", requireAdmin, express.json({ limit: "1mb" }), (req, res) => {
-  const style = parseStyle({ ...newStyleDefaults(), ...(req.body ?? {}) }, newId());
-  saveStyle(style);
+  const style = createStyle(parseStyle({ ...newStyleDefaults(), ...(req.body ?? {}) }, newId()));
   res.status(201).json({ style });
 });
 
 app.put("/api/admin/styles/:id", requireAdmin, express.json({ limit: "1mb" }), (req, res) => {
   const id = String(req.params.id);
   if (!getStyle(id)) throw new HttpError(404, "Style not found");
-  const style = parseStyle(req.body, id);
-  saveStyle(style);
+  const style = saveStyle(parseStyle(req.body, id), req.body?.rev);
   res.json({ style });
 });
 
@@ -178,7 +187,19 @@ app.post("/api/admin/uploads", requireAdmin, express.raw({ type: () => true, lim
   res.status(201).json({ url: `/uploads/${name}` });
 });
 
-app.use("/uploads", express.static(uploadsDir, { index: false, maxAge: "7d", immutable: true, setHeaders: (r) => r.setHeader("X-Content-Type-Options", "nosniff") }));
+// Pictures are for signed-in creators only. File names are random, but a link must not work for outsiders.
+app.use(
+  "/uploads",
+  requireUser,
+  express.static(uploadsDir, {
+    index: false,
+    cacheControl: false,
+    setHeaders: (r) => {
+      r.setHeader("Cache-Control", "private, max-age=604800, immutable");
+      r.setHeader("X-Content-Type-Options", "nosniff");
+    },
+  }),
+);
 
 // ---------- Built app (production) ----------
 
@@ -200,5 +221,6 @@ app.listen(config.port, () => {
   console.log(`Server on http://localhost:${config.port} (app URL ${config.publicUrl})`);
   if (!discordConfigured) console.warn("Discord login is not configured: set DISCORD_CLIENT_ID and DISCORD_CLIENT_SECRET.");
   if (!config.adminIds.length) console.warn("No admins: set ADMIN_DISCORD_IDS to a comma separated list of Discord user ids.");
-  if (!restricted) console.warn("Anyone with a Discord account can sign in. Set DISCORD_GUILD_ID or ALLOWED_DISCORD_IDS to restrict it.");
+  if (config.allowAnyone) console.warn("ALLOW_ANY_DISCORD is on: anyone with a Discord account can sign in.");
+  else if (!config.allowedIds.length && !config.discord.guildId) console.warn("Only admins can sign in. Set DISCORD_GUILD_ID or ALLOWED_DISCORD_IDS to let creators in.");
 });

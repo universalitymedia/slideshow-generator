@@ -15,11 +15,26 @@ export function SlideCard({
   onDownload: () => Promise<void>;
 }) {
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState("");
 
   async function copy() {
-    await onCopy();
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await onCopy();
+      setError("");
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setError("Couldn't copy. Select the text and copy it by hand.");
+    }
+  }
+
+  async function download() {
+    try {
+      await onDownload();
+      setError("");
+    } catch {
+      setError("Couldn't download this picture. Regenerate and try again.");
+    }
   }
 
   return (
@@ -34,10 +49,11 @@ export function SlideCard({
         <button className="btn outline sm" onClick={copy} disabled={!slide.text}>
           {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : "Copy text"}
         </button>
-        <button className="btn ghost sm" onClick={onDownload}>
+        <button className="btn ghost sm" onClick={download}>
           <Download size={14} /> Image
         </button>
       </div>
+      {error && <p className="auth-error small" role="alert">{error}</p>}
     </article>
   );
 }

@@ -1,8 +1,9 @@
 import { zipSync } from "fflate";
-import { ChevronDown, Copy, Download, ExternalLink, Images, Music2, Sparkles } from "lucide-react";
+import { ChevronDown, Copy, Download, ExternalLink, Images, Music2, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { CaptionCard } from "../components/CaptionCard";
+import { copyText, saveBlob } from "../clipboard";
 import { StylePicker } from "../components/StylePicker";
 import { SlideCard } from "../components/SlideCard";
 import type { PersonaId, TopicId } from "../slideshow/content";
@@ -22,13 +23,6 @@ import { TOOLS } from "../tools";
 
 const tool = TOOLS[0];
 
-function save(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement("a"), { href: url, download: filename });
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 const seedId = (seed: number) => seed.toString(16).padStart(8, "0");
 
 export function SlideshowGenerator() {
@@ -42,6 +36,7 @@ export function SlideshowGenerator() {
   const [captionPick, setCaptionPick] = useState<{ key: string; caption: PostCaption } | null>(null);
   const [busy, setBusy] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
+  const [problem, setProblem] = useState("");
 
   useEffect(() => {
     Promise.all([api.styles(), api.library()])
@@ -58,13 +53,18 @@ export function SlideshowGenerator() {
   const topics = useMemo(() => topicsFor(opts.persona), [opts.persona]);
   const personas = useMemo(() => personasFor(opts.topic), [opts.topic]);
 
-  const run = () => { setCaptionPick(null); setParams({ seed: newSeed(), opts: { ...opts } }); };
+  const run = () => { setCaptionPick(null); setProblem(""); setParams({ seed: newSeed(), opts: { ...opts } }); };
   const allText = () => show!.slides.map((s) => s.text).filter(Boolean).join("\n\n");
 
   async function copyAll() {
-    await navigator.clipboard.writeText(allText());
-    setCopiedAll(true);
-    setTimeout(() => setCopiedAll(false), 1500);
+    try {
+      await copyText(allText());
+      setProblem("");
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 1500);
+    } catch {
+      setProblem("Couldn't copy the text. Select it on the cards and copy it by hand.");
+    }
   }
 
   const usesBuiltIn = !!show && show.slides.some((s) => s.image.kind === "scene" || !s.image.url.startsWith("/uploads/"));
@@ -73,14 +73,28 @@ export function SlideshowGenerator() {
   async function downloadAll() {
     if (!show) return;
     setBusy(true);
+    setProblem("");
     try {
       const files: Record<string, Uint8Array> = {};
+      const failed: string[] = [];
       for (const [i, s] of show.slides.entries()) {
-        const { blob, ext } = await imageFile(s.image);
-        files[fileName(i, ext)] = new Uint8Array(await blob.arrayBuffer());
+        try {
+          const { blob, ext } = await imageFile(s.image);
+          files[fileName(i, ext)] = new Uint8Array(await blob.arrayBuffer());
+        } catch {
+          failed.push(`${i + 1} (${s.label})`);
+        }
       }
-      files["captions.txt"] = new TextEncoder().encode(allText());
-      save(new Blob([zipSync(files, { level: 0 }) as BlobPart], { type: "application/zip" }), `slideshow-${seedId(show.seed)}.zip`);
+      if (failed.length) {
+        setProblem(`Couldn't load the picture for slide ${failed.join(", ")}, so nothing was downloaded. An admin may have removed it. Regenerate, or download the other slides one by one.`);
+        return;
+      }
+      // captions.txt is what gets pasted into TikTok. The text written on each picture is its own file.
+      files["captions.txt"] = new TextEncoder().encode(`${show.caption.title}\n\n${show.caption.description}\n`);
+      files["slide-text.txt"] = new TextEncoder().encode(allText());
+      saveBlob(new Blob([zipSync(files, { level: 0 }) as BlobPart], { type: "application/zip" }), `slideshow-${seedId(show.seed)}.zip`);
+    } catch {
+      setProblem("Couldn't build the download. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -137,7 +151,7 @@ export function SlideshowGenerator() {
         <section className="empty">
           <span className="tile lg round"><Images size={22} /></span>
           <h3>No slideshow yet</h3>
-          <p className="muted">Leave theme and slides on random for a surprise, or pick them, then hit Generate.</p>
+          <p className="muted">Pick a style, then hit Generate. You get one picture and its text for every position in the style.</p>
         </section>
       ) : (
         <>
@@ -167,14 +181,21 @@ export function SlideshowGenerator() {
             </div>
           </section>
 
+          {problem && (
+            <p className="auth-error row" role="alert">
+              <span>{problem}</span>
+              <button className="icon-btn sm push" onClick={() => setProblem("")} aria-label="Dismiss"><X size={14} /></button>
+            </p>
+          )}
+
           <section className="slides">
             {show.slides.map((s, i) => (
               <SlideCard
                 key={`${show.seed}-${i}`}
                 slide={s}
                 index={i}
-                onCopy={() => navigator.clipboard.writeText(s.text)}
-                onDownload={async () => { const { blob, ext } = await imageFile(s.image); save(blob, fileName(i, ext)); }}
+                onCopy={() => copyText(s.text)}
+                onDownload={async () => { const { blob, ext } = await imageFile(s.image); saveBlob(blob, fileName(i, ext)); }}
               />
             ))}
           </section>

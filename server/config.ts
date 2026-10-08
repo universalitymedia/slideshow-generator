@@ -32,6 +32,10 @@ export const config = {
   },
   adminIds: list(process.env.ADMIN_DISCORD_IDS),
   allowedIds: list(process.env.ALLOWED_DISCORD_IDS),
+  // Removed from the allowlist (or the server) but still holding a session? List them here for an instant kick.
+  deniedIds: list(process.env.DENIED_DISCORD_IDS),
+  // Opt-in only. Without it, nobody but admins, listed ids and guild members can sign in.
+  allowAnyone: process.env.ALLOW_ANY_DISCORD === "true",
   // Skips Discord so the UI can be tried locally. Never honoured in production.
   devLogin: !production && process.env.DEV_LOGIN === "true",
   dataDir: process.env.DATA_DIR ?? "data",

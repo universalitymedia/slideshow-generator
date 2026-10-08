@@ -19,7 +19,7 @@ export function Layout({ route, children }: { route: string; children: ReactNode
         <a className="brand" href={href("/")}>
           <img className="logo" src={logo} alt="" />
           <span>
-            <strong>Universality Tool's</strong>
+            <strong>Universality Tools</strong>
             <small>Creator Tools</small>
           </span>
         </a>

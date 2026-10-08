@@ -33,6 +33,8 @@ export interface StyleSound {
 
 export interface SlideStyle {
   id: string;
+  /** Bumped by the server on every save. A save made from an older copy is refused, so two admins can't overwrite each other. */
+  rev: number;
   name: string;
   blurb: string;
   previews: string[]; // uploaded preview pictures, the first is the main one
@@ -44,6 +46,7 @@ export interface SlideStyle {
 
 /** Captions and sounds shared by every style that has none of its own. */
 export interface Library {
+  rev: number;
   captions: StyleCaption[];
   sounds: StyleSound[];
 }
@@ -69,7 +72,7 @@ export const defaultFormat = (): FormatSlot[] => [
   { id: "slot-6", kind: "cta" },
 ];
 
-export const newStyleDefaults = (): Omit<SlideStyle, "id"> => ({
+export const newStyleDefaults = (): Omit<SlideStyle, "id" | "rev"> => ({
   name: "New style",
   blurb: "",
   previews: [],
@@ -80,5 +83,5 @@ export const newStyleDefaults = (): Omit<SlideStyle, "id"> => ({
 });
 
 export const SEED_STYLES: SlideStyle[] = [
-  { id: "default", name: "Default", blurb: "Built-in photos and text", previews: [], format: defaultFormat(), slides: [], captions: [], sounds: [] },
+  { id: "default", rev: 1, name: "Default", blurb: "Built-in photos and text", previews: [], format: defaultFormat(), slides: [], captions: [], sounds: [] },
 ];

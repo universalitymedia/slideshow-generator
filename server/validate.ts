@@ -106,12 +106,12 @@ export function parseSounds(raw: unknown): StyleSound[] {
   });
 }
 
-export function parseLibrary(body: unknown): Library {
+export function parseLibrary(body: unknown): Omit<Library, "rev"> {
   const b = obj(body);
   return { captions: parseCaptions(b.captions ?? []), sounds: parseSounds(b.sounds ?? []) };
 }
 
-export function parseStyle(body: unknown, id: string): SlideStyle {
+export function parseStyle(body: unknown, id: string): Omit<SlideStyle, "rev"> {
   if (!body || typeof body !== "object") return bad("Invalid style");
   const b = body as Record<string, unknown>;
   if (!Array.isArray(b.previews)) bad("previews must be a list");
@@ -129,15 +129,63 @@ export function parseStyle(body: unknown, id: string): SlideStyle {
   };
 }
 
-const MAGIC: [string, "png" | "jpg" | "webp", (b: Buffer) => boolean][] = [
-  ["image/png", "png", (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))],
-  ["image/jpeg", "jpg", (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff],
-  ["image/webp", "webp", (b) => b.subarray(0, 4).toString() === "RIFF" && b.subarray(8, 12).toString() === "WEBP"],
+const MAX_SIDE = 10000; // pixels
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/** PNG: signature, an IHDR chunk first with sane dimensions, and an IEND chunk closing the file. */
+function validPng(b: Buffer): boolean {
+  if (b.length < 45 || !b.subarray(0, 8).equals(PNG_SIGNATURE)) return false;
+  if (b.readUInt32BE(8) !== 13 || b.subarray(12, 16).toString("latin1") !== "IHDR") return false;
+  const w = b.readUInt32BE(16);
+  const h = b.readUInt32BE(20);
+  if (!w || !h || w > MAX_SIDE || h > MAX_SIDE) return false;
+  // IEND is a fixed 12 bytes: length 0, "IEND", and its CRC.
+  return b.subarray(b.length - 8, b.length - 4).toString("latin1") === "IEND";
+}
+
+/** JPEG: walk the marker segments up to the frame header (dimensions), and require the end-of-image marker. */
+function validJpeg(b: Buffer): boolean {
+  if (b.length < 20 || b[0] !== 0xff || b[1] !== 0xd8) return false;
+  let end = b.length;
+  while (end > 2 && b[end - 1] === 0) end--; // some encoders pad the file
+  if (b[end - 2] !== 0xff || b[end - 1] !== 0xd9) return false;
+  let i = 2;
+  while (i + 4 <= end) {
+    if (b[i] !== 0xff) return false;
+    const marker = b[i + 1];
+    if (marker === 0xff) { i++; continue; } // fill byte
+    if (marker === 0xd8 || marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) { i += 2; continue; } // no length
+    const len = b.readUInt16BE(i + 2);
+    if (len < 2 || i + 2 + len > end) return false;
+    const isFrame = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
+    if (isFrame) {
+      if (len < 8) return false;
+      const h = b.readUInt16BE(i + 5);
+      const w = b.readUInt16BE(i + 7);
+      return w > 0 && h > 0 && w <= MAX_SIDE && h <= MAX_SIDE;
+    }
+    if (marker === 0xda) return false; // image data started with no frame header
+    i += 2 + len;
+  }
+  return false;
+}
+
+/** WebP: a RIFF container whose declared size matches the file, holding a VP8, VP8L or VP8X chunk. */
+function validWebp(b: Buffer): boolean {
+  if (b.length < 30 || b.subarray(0, 4).toString("latin1") !== "RIFF" || b.subarray(8, 12).toString("latin1") !== "WEBP") return false;
+  if (b.readUInt32LE(4) + 8 !== b.length && b.readUInt32LE(4) + 9 !== b.length) return false; // RIFF pads odd sizes
+  return ["VP8 ", "VP8L", "VP8X"].includes(b.subarray(12, 16).toString("latin1"));
+}
+
+const IMAGE_TYPES: ["png" | "jpg" | "webp", (b: Buffer) => boolean][] = [
+  ["png", validPng],
+  ["jpg", validJpeg],
+  ["webp", validWebp],
 ];
 
 /** Decide the file type from the bytes, not from what the client claims. SVG is deliberately not allowed. */
 export function imageExtension(buf: Buffer): "png" | "jpg" | "webp" {
-  const hit = MAGIC.find(([, , test]) => test(buf));
-  if (!hit) throw new HttpError(415, "Upload a PNG, JPEG or WebP image");
-  return hit[1];
+  const hit = IMAGE_TYPES.find(([, valid]) => valid(buf));
+  if (!hit) throw new HttpError(415, "Upload a PNG, JPEG or WebP image (the file looks damaged or is another type)");
+  return hit[0];
 }

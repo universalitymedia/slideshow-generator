@@ -57,6 +57,8 @@ export function generate(seed: number, opts: Options, style: SlideStyle, library
   const topical = shuffle(rand, TIPS.filter((t) => t.topic === hook.topic));
   const rest = shuffle(rand, TIPS.filter((t) => t.topic !== hook.topic));
   const tips = [...topical, ...rest].map((t) => t.text);
+  // A long format can have more tip positions than there are tips. Then the tips start over rather than run dry.
+  const tipAt = (n: number) => tips[n % tips.length];
   const fallbackImages = imagePool(rand, style.format.length);
   const labels = slotLabels(style.format);
 
@@ -67,7 +69,7 @@ export function generate(seed: number, opts: Options, style: SlideStyle, library
     const first = slot.kind === "slide" && !sawFirstSlide;
     if (slot.kind === "slide") sawFirstSlide = true;
     // Always draw the fallback so one position's pictures can't shift the random choices of the next.
-    const fallbackText = slot.kind === "cta" ? pick(rand, CTAS) : first ? hook.text : `${++tipNo}. ${tips[tipNo - 1] ?? ""}`;
+    const fallbackText = slot.kind === "cta" ? pick(rand, CTAS) : first ? hook.text : `${tipNo + 1}. ${tipAt(tipNo++)}`;
     if (own.length) {
       const chosen = pick(rand, own);
       return { kind: slot.kind, label: labels[i], text: chosen.text, image: photoSource(chosen.url) };

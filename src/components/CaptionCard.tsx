@@ -1,5 +1,6 @@
 import { Check, Copy, RefreshCw, Send } from "lucide-react";
 import { useState } from "react";
+import { copyText } from "../clipboard";
 import type { PostCaption } from "../slideshow/generate";
 
 function Block({ label, hint, count, button, value, children }: {
@@ -11,17 +12,23 @@ function Block({ label, hint, count, button, value, children }: {
   children: React.ReactNode;
 }) {
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
   async function copy() {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await copyText(value);
+      setFailed(false);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setFailed(true);
+    }
   }
   return (
     <div className="caption-block">
       <div className="caption-block-head">
         <span><strong>{label}</strong> <span className="muted small">{hint} · {count} characters</span></span>
         <button className="btn outline sm" onClick={copy}>
-          {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : button}
+          {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? "Copied" : failed ? "Copy failed, select it by hand" : button}
         </button>
       </div>
       <p>{children}</p>
