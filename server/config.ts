@@ -9,7 +9,8 @@ for (const f of [".env.local", ".env"]) {
 
 const list = (v?: string) => (v ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 const production = process.env.NODE_ENV === "production";
-const port = Number(process.env.PORT ?? 8787);
+// The hosting platform expects the app on 3000. Locally, 8787 keeps clear of other dev servers.
+const port = Number(process.env.PORT ?? (production ? 3000 : 8787));
 
 let sessionSecret = process.env.SESSION_SECRET ?? "";
 if (!sessionSecret) {
