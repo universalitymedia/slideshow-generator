@@ -1,4 +1,4 @@
-import type { SlideStyle } from "./slideshow/styles";
+import type { Library, SlideStyle } from "./slideshow/styles";
 
 async function request<T>(method: string, url: string, body?: unknown, raw?: Blob): Promise<T> {
   const res = await fetch(url, {
@@ -24,6 +24,8 @@ export const api = {
   config: () => request<{ discord: boolean; devLogin: boolean }>("GET", "/api/config"),
   logout: () => request<{ ok: true }>("POST", "/auth/logout"),
   styles: () => request<{ styles: SlideStyle[] }>("GET", "/api/styles"),
+  library: () => request<{ library: Library }>("GET", "/api/library"),
+  saveLibrary: (library: Library) => request<{ library: Library }>("PUT", "/api/admin/library", library),
   createStyle: (style?: Partial<SlideStyle>) => request<{ style: SlideStyle }>("POST", "/api/admin/styles", style ?? {}),
   saveStyle: (style: SlideStyle) => request<{ style: SlideStyle }>("PUT", `/api/admin/styles/${style.id}`, style),
   deleteStyle: (id: string) => request<{ ok: true }>("DELETE", `/api/admin/styles/${id}`),

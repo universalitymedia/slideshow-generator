@@ -6,7 +6,7 @@ import { CaptionCard } from "../components/CaptionCard";
 import { StylePicker } from "../components/StylePicker";
 import { SlideCard } from "../components/SlideCard";
 import type { PersonaId, TopicId } from "../slideshow/content";
-import type { SlideStyle } from "../slideshow/styles";
+import type { Library, SlideStyle } from "../slideshow/styles";
 import {
   generate,
   pickCaption,
@@ -33,6 +33,7 @@ const seedId = (seed: number) => seed.toString(16).padStart(8, "0");
 
 export function SlideshowGenerator() {
   const [styles, setStyles] = useState<SlideStyle[] | null>(null);
+  const [library, setLibrary] = useState<Library | null>(null);
   const [loadError, setLoadError] = useState("");
   const [styleId, setStyleId] = useState("");
   const [opts, setOpts] = useState<Options>({ persona: "any", topic: "any" });
@@ -43,11 +44,13 @@ export function SlideshowGenerator() {
   const [copiedAll, setCopiedAll] = useState(false);
 
   useEffect(() => {
-    api.styles().then((r) => { setStyles(r.styles); setStyleId(r.styles[0]?.id ?? ""); }).catch((e) => setLoadError(e.message));
+    Promise.all([api.styles(), api.library()])
+      .then(([s, l]) => { setStyles(s.styles); setLibrary(l.library); setStyleId(s.styles[0]?.id ?? ""); })
+      .catch((e) => setLoadError(e.message));
   }, []);
 
   const style: SlideStyle | undefined = styles?.find((s) => s.id === styleId) ?? styles?.[0];
-  const generated = useMemo(() => (params && style ? generate(params.seed, params.opts, style) : null), [params, style]);
+  const generated = useMemo(() => (params && style && library ? generate(params.seed, params.opts, style, library) : null), [params, style, library]);
   const caption = generated && captionPick?.key === `${generated.seed}-${generated.topic}` ? captionPick.caption : generated?.caption;
   const show = generated && caption ? { ...generated, caption } : null;
 
@@ -99,7 +102,7 @@ export function SlideshowGenerator() {
             <h2>Style</h2>
             <p className="muted small">Pick a style. Each card previews what it makes.</p>
           </div>
-          <button className="btn primary" onClick={run} disabled={!style}>
+          <button className="btn primary" onClick={run} disabled={!style || !library}>
             <Sparkles size={16} /> {show ? "Regenerate" : "Generate slideshow"}
           </button>
         </div>
@@ -178,7 +181,7 @@ export function SlideshowGenerator() {
 
           <CaptionCard
             caption={show.caption}
-            onShuffle={() => setCaptionPick({ key: `${show.seed}-${show.topic}`, caption: pickCaption(Math.random, style!, show.topic, show.caption) })}
+            onShuffle={() => setCaptionPick({ key: `${show.seed}-${show.topic}`, caption: pickCaption(Math.random, style!, library!, show.topic, show.caption) })}
           />
         </>
       )}

@@ -2,7 +2,7 @@ import { CAPTIONS, CTAS, HASHTAGS, HOOKS, PERSONAS, SOUNDS, TIPS, TOPICS, type P
 import { mulberry32, pick, shuffle, type Rand } from "./rng";
 import { imagePool, type ImageSource } from "./images";
 import { photoSource } from "./styleUtils";
-import { slotLabels, type SlideStyle } from "./styles";
+import { slotLabels, type Library, type SlideStyle } from "./styles";
 
 export interface Slide {
   kind: "slide" | "cta";
@@ -47,7 +47,7 @@ export function personasFor(topic: TopicId | "any") {
  * with the text the admin wrote for it. A position with none gets a built-in picture and built-in text, so a
  * fresh style still produces a full slideshow. Same seed, options and style always give the same result.
  */
-export function generate(seed: number, opts: Options, style: SlideStyle): Slideshow {
+export function generate(seed: number, opts: Options, style: SlideStyle, library: Library): Slideshow {
   const rand = mulberry32(seed);
 
   const hooks = HOOKS.filter(
@@ -75,14 +75,20 @@ export function generate(seed: number, opts: Options, style: SlideStyle): Slides
     return { kind: slot.kind, label: labels[i], text: fallbackText, image: fallbackImages[i] };
   });
 
-  return { seed, opts, persona: hook.persona, topic: hook.topic, sound: style.sounds.length ? pick(rand, style.sounds) : pick(rand, SOUNDS), caption: pickCaption(rand, style, hook.topic), slides };
+  return { seed, opts, persona: hook.persona, topic: hook.topic, sound: pickSound(rand, style, library), caption: pickCaption(rand, style, library, hook.topic), slides };
 }
 
-/** A caption from the style, or a built-in one for the topic when the style has none. Pass `not` to get a different one. */
-export function pickCaption(rand: Rand, style: SlideStyle, topic: TopicId, not?: PostCaption): PostCaption {
-  const own = style.captions.map((c): PostCaption => ({ title: c.title, description: c.text }));
-  const pool = own.length
-    ? own
+/** The style's own sounds, else the shared library, else the built-in list if an admin emptied the library. */
+function pickSound(rand: Rand, style: SlideStyle, library: Library): Sound {
+  const pool = style.sounds.length ? style.sounds : library.sounds.length ? library.sounds : SOUNDS;
+  return pick(rand, pool);
+}
+
+/** The style's own captions, else the shared library. Pass `not` to get a different one, e.g. when shuffling. */
+export function pickCaption(rand: Rand, style: SlideStyle, library: Library, topic: TopicId, not?: PostCaption): PostCaption {
+  const source = style.captions.length ? style.captions : library.captions;
+  const pool = source.length
+    ? source.map((c): PostCaption => ({ title: c.title, description: c.text }))
     : CAPTIONS.filter((c) => c.topic === topic).map((c): PostCaption => ({ title: c.title, description: `${c.text} ${HASHTAGS[c.topic].join(" ")}` }));
   const others = pool.filter((c) => !not || c.title !== not.title || c.description !== not.description);
   return pick(rand, others.length ? others : pool);

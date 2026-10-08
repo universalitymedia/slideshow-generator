@@ -6,6 +6,7 @@ import { FormatEditor } from "../components/FormatEditor";
 import { PreviewStack } from "../components/PreviewStack";
 import { SoundsEditor } from "../components/SoundsEditor";
 import { Uploader } from "../components/Uploader";
+import { Link } from "../components/Link";
 import { go, href } from "../router";
 import { MAX_PREVIEWS, type SlideStyle } from "../slideshow/styles";
 
@@ -133,12 +134,20 @@ export function StyleEditor({ id }: { id: string }) {
 
           <section className="card panel">
             <h2>Captions</h2>
-            <CaptionsEditor style={draft} onChange={patch} />
+            <CaptionsEditor
+              captions={draft.captions}
+              onChange={(captions) => patch({ captions })}
+              help={<>A title and a description (hashtags included) creators paste into TikTok. Creators get one at random and can shuffle. With none here, this style uses the shared captions under <Link to="/admin/captions">Admin &gt; Captions</Link>.</>}
+            />
           </section>
 
           <section className="card panel">
             <h2>Music</h2>
-            <SoundsEditor style={draft} onChange={patch} />
+            <SoundsEditor
+              sounds={draft.sounds}
+              onChange={(sounds) => patch({ sounds })}
+              help={<>Sounds for this style. Creators get one at random. With none here, this style uses the shared music under <Link to="/admin/music">Admin &gt; Music</Link>.</>}
+            />
           </section>
         </div>
 

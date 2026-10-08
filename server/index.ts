@@ -4,8 +4,8 @@ import { join, resolve } from "node:path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { newStyleDefaults } from "../src/slideshow/styles.ts";
 import { config, discordConfigured, redirectUri } from "./config.ts";
-import { getStyle, listStyles, newId, removeStyle, saveStyle, uploadsDir } from "./db.ts";
-import { HttpError, imageExtension, parseStyle } from "./validate.ts";
+import { getLibrary, getStyle, listStyles, newId, removeStyle, saveLibrary, saveStyle, uploadsDir } from "./db.ts";
+import { HttpError, imageExtension, parseLibrary, parseStyle } from "./validate.ts";
 import { parseCookies, sign, verify, SESSION_MAX_AGE_MS, type SessionUser } from "./session.ts";
 
 const app = express();
@@ -137,6 +137,16 @@ app.post("/auth/logout", (_req, res) => {
 
 app.get("/api/styles", requireUser, (_req, res) => {
   res.json({ styles: listStyles() });
+});
+
+app.get("/api/library", requireUser, (_req, res) => {
+  res.json({ library: getLibrary() });
+});
+
+app.put("/api/admin/library", requireAdmin, express.json({ limit: "1mb" }), (req, res) => {
+  const library = parseLibrary(req.body);
+  saveLibrary(library);
+  res.json({ library });
 });
 
 app.post("/api/admin/styles", requireAdmin, express.json({ limit: "1mb" }), (req, res) => {

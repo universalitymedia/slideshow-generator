@@ -1,23 +1,22 @@
 import { Plus, Trash2 } from "lucide-react";
-import { MAX_SOUNDS, type SlideStyle, type StyleSound } from "../slideshow/styles";
+import type { ReactNode } from "react";
+import { MAX_SOUNDS, type StyleSound } from "../slideshow/styles";
 
 const newId = () => crypto.randomUUID().slice(0, 8);
 
-export function SoundsEditor({ style, onChange }: { style: SlideStyle; onChange: (patch: Partial<SlideStyle>) => void }) {
-  const { sounds } = style;
-  const edit = (id: string, patch: Partial<StyleSound>) => onChange({ sounds: sounds.map((s) => (s.id === id ? { ...s, ...patch } : s)) });
+/** Add, edit and remove sounds. Used for a style's own sounds and for the shared library. */
+export function SoundsEditor({ sounds, help, onChange }: { sounds: StyleSound[]; help: ReactNode; onChange: (sounds: StyleSound[]) => void }) {
+  const edit = (id: string, patch: Partial<StyleSound>) => onChange(sounds.map((s) => (s.id === id ? { ...s, ...patch } : s)));
 
   return (
     <div>
-      <p className="muted small tab-help">
-        Sounds creators can use with this style. Creators get one at random. Add the link to the exact sound if you have it, otherwise creators get a TikTok search for the title. With none here, built-in sounds are used.
-      </p>
+      <p className="muted small tab-help">{help}</p>
       <ul className="rows">
         {sounds.map((s, i) => (
           <li key={s.id} className="row-card">
             <div className="row-head">
               <strong className="small">Sound {i + 1}</strong>
-              <button className="icon-btn sm dark" onClick={() => onChange({ sounds: sounds.filter((x) => x.id !== s.id) })} aria-label={`Remove sound ${i + 1}`} title="Remove">
+              <button className="icon-btn sm dark" onClick={() => onChange(sounds.filter((x) => x.id !== s.id))} aria-label={`Remove sound ${i + 1}`} title="Remove">
                 <Trash2 size={15} />
               </button>
             </div>
@@ -39,7 +38,7 @@ export function SoundsEditor({ style, onChange }: { style: SlideStyle; onChange:
         ))}
         {!sounds.length && <li className="muted small">No sounds yet.</li>}
       </ul>
-      <button className="btn outline" onClick={() => onChange({ sounds: [...sounds, { id: newId(), title: "", artist: "", url: "" }] })} disabled={sounds.length >= MAX_SOUNDS}>
+      <button className="btn outline" onClick={() => onChange([...sounds, { id: newId(), title: "", artist: "", url: "" }])} disabled={sounds.length >= MAX_SOUNDS}>
         <Plus size={16} /> Add sound
       </button>
     </div>

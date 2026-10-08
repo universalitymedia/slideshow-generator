@@ -42,6 +42,12 @@ export interface SlideStyle {
   sounds: StyleSound[];
 }
 
+/** Captions and sounds shared by every style that has none of its own. */
+export interface Library {
+  captions: StyleCaption[];
+  sounds: StyleSound[];
+}
+
 export const MAX_CAPTIONS = 30;
 export const MAX_SOUNDS = 30;
 export const MAX_SLOTS = 15;

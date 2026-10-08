@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   MAX_CAPTIONS, MAX_PICTURES_PER_SLOT, MAX_PREVIEWS, MAX_SLOTS, MAX_SOUNDS,
-  type FormatSlot, type SlideStyle, type StyleCaption, type StyleSlide, type StyleSound,
+  type FormatSlot, type Library, type SlideStyle, type StyleCaption, type StyleSlide, type StyleSound,
 } from "../src/slideshow/styles.ts";
 
 export class HttpError extends Error {
@@ -67,7 +67,7 @@ function parseSlides(raw: unknown, format: FormatSlot[]): StyleSlide[] {
 const obj = (r: unknown) => (r && typeof r === "object" ? r : {}) as Record<string, unknown>;
 
 /** Rows left completely empty in the editor are dropped instead of rejected. */
-function parseCaptions(raw: unknown): StyleCaption[] {
+export function parseCaptions(raw: unknown): StyleCaption[] {
   if (!Array.isArray(raw)) return bad("captions must be a list");
   if (raw.length > MAX_CAPTIONS) return bad(`A style can have at most ${MAX_CAPTIONS} captions`);
   const seen = new Set<string>();
@@ -81,7 +81,7 @@ function parseCaptions(raw: unknown): StyleCaption[] {
   });
 }
 
-function parseSounds(raw: unknown): StyleSound[] {
+export function parseSounds(raw: unknown): StyleSound[] {
   if (!Array.isArray(raw)) return bad("sounds must be a list");
   if (raw.length > MAX_SOUNDS) return bad(`A style can have at most ${MAX_SOUNDS} sounds`);
   const seen = new Set<string>();
@@ -104,6 +104,11 @@ function parseSounds(raw: unknown): StyleSound[] {
     }
     return [{ id: uniqueId(o.id, seen), title, artist, ...(url ? { url } : {}) }];
   });
+}
+
+export function parseLibrary(body: unknown): Library {
+  const b = obj(body);
+  return { captions: parseCaptions(b.captions ?? []), sounds: parseSounds(b.sounds ?? []) };
 }
 
 export function parseStyle(body: unknown, id: string): SlideStyle {

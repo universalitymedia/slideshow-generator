@@ -48,9 +48,13 @@ export function Layout({ route, children }: { route: string; children: ReactNode
           {user?.isAdmin && (
             <>
               <p className="nav-label">Admin</p>
-              <a className={`nav-item ${inAdmin ? "active" : ""}`} href={href("/admin")}>
+              <a className={`nav-item ${route === "/admin" || editing ? "active" : ""}`} href={href("/admin")}>
                 <ShieldCheck size={18} /> <span>Styles</span>
               </a>
+              <div className="nav-sub">
+                <a className={`nav-sub-item ${route === "/admin/captions" ? "active" : ""}`} href={href("/admin/captions")}>Captions</a>
+                <a className={`nav-sub-item ${route === "/admin/music" ? "active" : ""}`} href={href("/admin/music")}>Music</a>
+              </div>
             </>
           )}
         </nav>
@@ -75,11 +79,11 @@ export function Layout({ route, children }: { route: string; children: ReactNode
               <>
                 <li><a href={href("/")}>Dashboard</a></li>
                 <ChevronRight size={14} />
-                {editing ? (
+                {editing || route === "/admin/captions" || route === "/admin/music" ? (
                   <>
                     <li><a href={href("/admin")}>Admin</a></li>
                     <ChevronRight size={14} />
-                    <li aria-current="page">Edit style</li>
+                    <li aria-current="page">{editing ? "Edit style" : route === "/admin/captions" ? "Captions" : "Music"}</li>
                   </>
                 ) : (
                   <li aria-current="page">Admin</li>

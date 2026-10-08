@@ -1,23 +1,22 @@
 import { Plus, Trash2 } from "lucide-react";
-import { MAX_CAPTIONS, type SlideStyle, type StyleCaption } from "../slideshow/styles";
+import type { ReactNode } from "react";
+import { MAX_CAPTIONS, type StyleCaption } from "../slideshow/styles";
 
 const newId = () => crypto.randomUUID().slice(0, 8);
 
-export function CaptionsEditor({ style, onChange }: { style: SlideStyle; onChange: (patch: Partial<SlideStyle>) => void }) {
-  const { captions } = style;
-  const edit = (id: string, patch: Partial<StyleCaption>) => onChange({ captions: captions.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
+/** Add, edit and remove captions. Used for a style's own captions and for the shared library. */
+export function CaptionsEditor({ captions, help, onChange }: { captions: StyleCaption[]; help: ReactNode; onChange: (captions: StyleCaption[]) => void }) {
+  const edit = (id: string, patch: Partial<StyleCaption>) => onChange(captions.map((c) => (c.id === id ? { ...c, ...patch } : c)));
 
   return (
     <div>
-      <p className="muted small tab-help">
-        What creators paste into TikTok: a bold title and a description. Put the hashtags in the description. Creators get one at random and can shuffle to another. With none here, built-in captions are used.
-      </p>
+      <p className="muted small tab-help">{help}</p>
       <ul className="rows">
         {captions.map((c, i) => (
           <li key={c.id} className="row-card">
             <div className="row-head">
               <strong className="small">Caption {i + 1}</strong>
-              <button className="icon-btn sm dark" onClick={() => onChange({ captions: captions.filter((x) => x.id !== c.id) })} aria-label={`Remove caption ${i + 1}`} title="Remove">
+              <button className="icon-btn sm dark" onClick={() => onChange(captions.filter((x) => x.id !== c.id))} aria-label={`Remove caption ${i + 1}`} title="Remove">
                 <Trash2 size={15} />
               </button>
             </div>
@@ -33,7 +32,7 @@ export function CaptionsEditor({ style, onChange }: { style: SlideStyle; onChang
         ))}
         {!captions.length && <li className="muted small">No captions yet.</li>}
       </ul>
-      <button className="btn outline" onClick={() => onChange({ captions: [...captions, { id: newId(), title: "", text: "" }] })} disabled={captions.length >= MAX_CAPTIONS}>
+      <button className="btn outline" onClick={() => onChange([...captions, { id: newId(), title: "", text: "" }])} disabled={captions.length >= MAX_CAPTIONS}>
         <Plus size={16} /> Add caption
       </button>
     </div>

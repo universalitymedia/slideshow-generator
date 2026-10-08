@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { defaultFormat, SEED_STYLES, type SlideStyle } from "../src/slideshow/styles.ts";
+import { CAPTIONS, HASHTAGS, SOUNDS } from "../src/slideshow/content.ts";
+import { defaultFormat, SEED_STYLES, type Library, type SlideStyle } from "../src/slideshow/styles.ts";
 import { config } from "./config.ts";
 
 // Small JSON file store. Fine for a handful of admins editing a handful of styles.
@@ -11,13 +12,20 @@ mkdirSync(uploadsDir, { recursive: true });
 
 interface Db {
   styles: SlideStyle[];
+  library: Library;
 }
+
+/** The built-in captions and sounds, as editable rows. Used the first time the library is needed. */
+const seedLibrary = (): Library => ({
+  captions: CAPTIONS.map((c, i) => ({ id: `cap-${i + 1}`, title: c.title, text: `${c.text} ${HASHTAGS[c.topic].join(" ")}` })),
+  sounds: SOUNDS.map((s, i) => ({ id: `snd-${i + 1}`, title: s.title, artist: s.artist })),
+});
 
 /** Styles saved before formats existed keep their name and description and get the default format. */
 function load(): Db {
   if (existsSync(dbFile)) {
-    const raw = JSON.parse(readFileSync(dbFile, "utf8")) as { styles: Partial<SlideStyle>[] };
-    let changed = false;
+    const raw = JSON.parse(readFileSync(dbFile, "utf8")) as { styles: Partial<SlideStyle>[]; library?: Library };
+    let changed = !raw.library;
     const styles = raw.styles.map((s) => {
       if (Array.isArray(s.format)) {
         if (s.captions && s.sounds) return s as SlideStyle;
@@ -27,11 +35,11 @@ function load(): Db {
       changed = true;
       return { id: s.id!, name: s.name ?? "Style", blurb: s.blurb ?? "", previews: [], format: defaultFormat(), slides: [], captions: [], sounds: [] } satisfies SlideStyle;
     });
-    const db: Db = { styles };
+    const db: Db = { styles, library: raw.library ?? seedLibrary() };
     if (changed) persist(db);
     return db;
   }
-  const db: Db = { styles: structuredClone(SEED_STYLES) };
+  const db: Db = { styles: structuredClone(SEED_STYLES), library: seedLibrary() };
   persist(db);
   return db;
 }
@@ -45,6 +53,11 @@ function persist(db: Db) {
 const db = load();
 
 export const listStyles = () => db.styles;
+export const getLibrary = () => db.library;
+export function saveLibrary(library: Library) {
+  db.library = library;
+  persist(db);
+}
 export const getStyle = (id: string) => db.styles.find((s) => s.id === id);
 export const newId = () => randomUUID().slice(0, 8);
 

@@ -29,6 +29,7 @@ Admins get an **Admin > Styles** page in the sidebar. A style is made of:
 - **Basics:** a name and description.
 - **Preview pictures:** uploaded pictures shown on the style's card in the generator. The starred one is the main picture.
 - **Format:** the order of the slideshow, for example `Slide 1, Slide 2, Slide 3, CTA, Slide 4, Slide 5`. Add slides and CTAs, drag them into any order and remove them.
+- **Shared Captions and Music:** under **Admin > Styles** in the sidebar there are **Captions** and **Music** pages. They hold the library every style uses unless it has its own. The built-in captions and sounds are copied there the first time, so you can edit or remove them. A style that has its own captions or music (below) uses those instead.
 - **Captions:** the title and description (hashtags included) creators paste into TikTok. Creators get one at random and can shuffle.
 - **Music:** sounds with an optional link to the exact sound. Without a link, creators get a TikTok search.
 - **Slides:** for each position in the format, upload pictures and write the text creators copy for each one. Generating picks one picture per position at random.

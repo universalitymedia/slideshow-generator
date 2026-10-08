@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Layout } from "./components/Layout";
 import { useAuth } from "./auth";
+import { AdminLibrary } from "./pages/AdminLibrary";
 import { AdminStyles } from "./pages/AdminStyles";
 import { Dashboard } from "./pages/Dashboard";
 import { Login } from "./pages/Login";
@@ -26,6 +27,8 @@ export function App() {
   if (route === "/tiktok/slideshow-generator") page = <SlideshowGenerator />;
   else if (user.isAdmin && editing) page = <StyleEditor id={editing[1]} />;
   else if (user.isAdmin && route === "/admin") page = <AdminStyles />;
+  else if (user.isAdmin && route === "/admin/captions") page = <AdminLibrary kind="captions" />;
+  else if (user.isAdmin && route === "/admin/music") page = <AdminLibrary kind="sounds" />;
 
   return <Layout route={route}>{page}</Layout>;
 }
